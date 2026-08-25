@@ -1,0 +1,9 @@
+{
+  "name": "OUR \u2014 Life Organizer",
+  "short_name": "OUR",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050506",
+  "theme_color": "#050506",
+  "icons": []
+}
