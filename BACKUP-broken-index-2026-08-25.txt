@@ -1,0 +1,1 @@
+Backup marker for the broken index.html state from commit 122b488bfebfc45f5a39745504fa4b21bc2f2d3c. The actual broken file remains recoverable from that commit.
