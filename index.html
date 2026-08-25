@@ -3,7 +3,1979 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-<!doctype html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+
 <meta name="theme-color" content="#050506">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<title>OUR — Life Organizer</title>
+
+<style>
+
+:root{
+
+  --bg:#050506;
+
+  --card:#111114;
+
+  --card2:#1a1a1e;
+
+  --red:#ff2028;
+
+  --text:#fff;
+
+  --muted:#92929b;
+
+  --line:#ffffff12;
+
+}
+
+*{box-sizing:border-box}
+
+html,body{
+
+  margin:0;
+
+  background:var(--bg);
+
+  color:var(--text);
+
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
+
+}
+
+body{min-height:100vh}
+
+.app{
+
+  max-width:560px;
+
+  margin:auto;
+
+  padding:20px 16px 110px;
+
+}
+
+.view{display:none}
+
+.view.active{display:block}
+
+h1{
+
+  font-size:31px;
+
+  margin:8px 0 5px;
+
+}
+
+.sub{
+
+  color:var(--muted);
+
+  font-size:14px;
+
+  margin-bottom:20px;
+
+}
+
+.section{
+
+  font-size:11px;
+
+  font-weight:800;
+
+  letter-spacing:.1em;
+
+  color:#aaa;
+
+  margin:23px 3px 8px;
+
+}
+
+.card{
+
+  background:linear-gradient(145deg,#151518,#0e0e11);
+
+  border:1px solid var(--line);
+
+  border-radius:20px;
+
+  padding:16px;
+
+  margin:10px 0;
+
+  box-shadow:0 8px 25px #0007;
+
+}
+
+.grid{
+
+  display:grid;
+
+  grid-template-columns:1fr 1fr;
+
+  gap:10px;
+
+}
+
+.tile{min-height:105px}
+
+.row{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:12px;
+
+}
+
+.grow{flex:1}
+
+.icon{
+
+  width:43px;
+
+  height:43px;
+
+  border-radius:14px;
+
+  background:#1b1b1f;
+
+  border:1px solid #ff202826;
+
+  display:grid;
+
+  place-items:center;
+
+  color:var(--red);
+
+  font-size:21px;
+
+  flex:none;
+
+}
+
+.small{
+
+  font-size:12px;
+
+  color:var(--muted);
+
+}
+
+button{
+
+  font:inherit;
+
+  cursor:pointer;
+
+}
+
+.btn{
+
+  border:0;
+
+  border-radius:13px;
+
+  background:var(--red);
+
+  color:#fff;
+
+  padding:12px 15px;
+
+  font-weight:750;
+
+}
+
+.btn.dark{background:#222227}
+
+.full{
+
+  width:100%;
+
+  margin-top:8px;
+
+}
+
+.pill{
+
+  border:1px solid #ffffff12;
+
+  background:#202025;
+
+  color:#ddd;
+
+  border-radius:99px;
+
+  padding:7px 10px;
+
+  font-size:12px;
+
+  display:inline-block;
+
+  margin:3px;
+
+}
+
+.list{margin-top:8px}
+
+.item{
+
+  padding:13px 0;
+
+  border-bottom:1px solid var(--line);
+
+}
+
+.item:last-child{border:0}
+
+.money{
+
+  font-size:32px;
+
+  font-weight:850;
+
+}
+
+.good{color:#48d37b}
+
+.bad{color:#ff6268}
+
+input,textarea,select{
+
+  width:100%;
+
+  padding:13px;
+
+  border:1px solid #ffffff14;
+
+  background:#19191d;
+
+  color:#fff;
+
+  border-radius:13px;
+
+  outline:none;
+
+  margin:5px 0;
+
+  font:inherit;
+
+}
+
+textarea{resize:vertical}
+
+.nav{
+
+  position:fixed;
+
+  z-index:10;
+
+  left:0;
+
+  right:0;
+
+  bottom:0;
+
+  background:#0d0d0eee;
+
+  backdrop-filter:blur(18px);
+
+  border-top:1px solid var(--line);
+
+  padding-bottom:env(safe-area-inset-bottom);
+
+}
+
+.navin{
+
+  max-width:560px;
+
+  margin:auto;
+
+  display:flex;
+
+  justify-content:space-around;
+
+}
+
+.nav button{
+
+  border:0;
+
+  background:none;
+
+  color:#777;
+
+  padding:9px 10px 7px;
+
+  font-size:10px;
+
+}
+
+.nav button b{
+
+  display:block;
+
+  font-size:20px;
+
+  margin-bottom:2px;
+
+}
+
+.nav button.active{color:var(--red)}
+
+.fab{
+
+  position:fixed;
+
+  z-index:11;
+
+  right:20px;
+
+  bottom:75px;
+
+  width:62px;
+
+  height:62px;
+
+  border:0;
+
+  border-radius:50%;
+
+  background:var(--red);
+
+  color:#fff;
+
+  font-size:30px;
+
+  box-shadow:0 0 30px #ff202866,0 12px 30px #000;
+
+}
+
+.modal{
+
+  display:none;
+
+  position:fixed;
+
+  inset:0;
+
+  background:#000d;
+
+  z-index:30;
+
+  align-items:flex-end;
+
+}
+
+.modal.open{display:flex}
+
+.sheet{
+
+  background:#111114;
+
+  border-radius:25px 25px 0 0;
+
+  width:100%;
+
+  max-width:560px;
+
+  margin:auto;
+
+  padding:20px;
+
+  max-height:90vh;
+
+  overflow:auto;
+
+}
+
+.close{
+
+  float:right;
+
+  border:0;
+
+  background:#222227;
+
+  color:#fff;
+
+  border-radius:50%;
+
+  width:35px;
+
+  height:35px;
+
+}
+
+.empty{
+
+  text-align:center;
+
+  padding:25px;
+
+  color:var(--muted);
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- HOME -->
+
+<section id="home" class="view active">
+
+<h1>Good evening 👋</h1>
+
+<div class="sub">Everything you need, in one place.</div>
+
+<div class="card" onclick="openCapture()">
+
+  <div class="row">
+
+    <div class="icon">✦</div>
+
+    <div class="grow">
+
+      <b>Quick Capture</b>
+
+      <div class="small">Screenshot, link, idea or note</div>
+
+    </div>
+
+    <span>›</span>
+
+  </div>
+
+</div>
+
+<div class="section">TODAY</div>
+
+<div id="todayCard" class="card"></div>
+
+<div class="section">YOUR LIFE</div>
+
+<div class="grid">
+
+<div class="card tile" onclick="show('plan')">
+
+  <div class="icon">□</div>
+
+  <b>Plan</b>
+
+  <div class="small">Week & reminders</div>
+
+</div>
+
+<div class="card tile" onclick="show('money')">
+
+  <div class="icon">$</div>
+
+  <b>Money</b>
+
+  <div class="small">Budget & bills</div>
+
+</div>
+
+<div class="card tile" onclick="show('us')">
+
+  <div class="icon">♡</div>
+
+  <b>Us</b>
+
+  <div class="small">Her & date ideas</div>
+
+</div>
+
+<div class="card tile" onclick="show('recipes')">
+
+  <div class="icon">🍴</div>
+
+  <b>Recipes</b>
+
+  <div class="small">Saved & groceries</div>
+
+</div>
+
+</div>
+
+<div class="section">MY STUFF</div>
+
+<div class="grid">
+
+<div class="card tile" onclick="show('dirtbike')">
+
+  <div class="icon">🏍</div>
+
+  <b>Dirtbike</b>
+
+  <div class="small">Bike & parts</div>
+
+</div>
+
+<div class="card tile" onclick="show('folders')">
+
+  <div class="icon">□</div>
+
+  <b>Folders</b>
+
+  <div class="small">Custom spaces</div>
+
+</div>
+
+</div>
+
+<div class="card" onclick="show('ai')">
+
+  <div class="row">
+
+    <div class="icon">✦</div>
+
+    <div class="grow">
+
+      <b>Ask AI anything</b>
+
+      <div class="small">Plan, organize, budget or find things.</div>
+
+    </div>
+
+    <button class="btn">Chat</button>
+
+  </div>
+
+</div>
+
+</section>
+
+<!-- PLAN -->
+
+<section id="plan" class="view">
+
+<h1>Plan</h1>
+
+<div class="sub">Your week, without the clutter.</div>
+
+<div class="card">
+
+<div class="row">
+
+<b class="grow">This week</b>
+
+<button class="btn" onclick="addPlan()">＋</button>
+
+</div>
+
+<div id="planList"></div>
+
+</div>
+
+</section>
+
+<!-- MONEY -->
+
+<section id="money" class="view">
+
+<h1>Money</h1>
+
+<div class="sub">Bills, paycheques and what is safe to spend.</div>
+
+<div class="card">
+
+<div class="small">SAFE TO SPEND</div>
+
+<div id="safeSpend" class="money">$0.00</div>
+
+<div id="moneyExplain" class="small"></div>
+
+</div>
+
+<div class="grid">
+
+<div class="card">
+
+<div class="small">NEXT PAY</div>
+
+<b id="nextPay">$0.00</b>
+
+</div>
+
+<div class="card">
+
+<div class="small">SAVINGS GOAL</div>
+
+<b id="saveGoal">$0.00</b>
+
+</div>
+
+</div>
+
+<div class="section">BILLS</div>
+
+<div class="card">
+
+<div id="billList"></div>
+
+<button class="btn full" onclick="addBill()">＋ Add bill</button>
+
+</div>
+
+<div class="section">PAYCHEQUES</div>
+
+<div class="card">
+
+<div id="payList"></div>
+
+<button class="btn full" onclick="addPay()">＋ Add paycheque</button>
+
+</div>
+
+<div class="card">
+
+<input id="goalInput" type="number" placeholder="Savings goal">
+
+<button class="btn full" onclick="setGoal()">Set savings goal</button>
+
+</div>
+
+</section>
+
+<!-- US -->
+
+<section id="us" class="view">
+
+<h1>♡ Us</h1>
+
+<div class="sub">A custom space for your girlfriend and your life together.</div>
+
+<div class="grid">
+
+<div class="card tile" onclick="showItems('us','Gifts')">
+
+<div class="icon">🎁</div>
+
+<b>Gifts</b>
+
+<div class="small">Things to buy her</div>
+
+</div>
+
+<div class="card tile" onclick="showItems('us','Likes')">
+
+<div class="icon">♡</div>
+
+<b>Likes</b>
+
+<div class="small">Food & favourites</div>
+
+</div>
+
+<div class="card tile" onclick="showItems('us','Dates')">
+
+<div class="icon">✦</div>
+
+<b>Date Ideas</b>
+
+<div class="small">Things to do</div>
+
+</div>
+
+<div class="card tile" onclick="showItems('us','Places')">
+
+<div class="icon">⌖</div>
+
+<b>Places</b>
+
+<div class="small">Restaurants & trips</div>
+
+</div>
+
+</div>
+
+<div id="usItems" class="card"></div>
+
+<button class="btn full" onclick="addUs()">＋ Add something</button>
+
+</section>
+
+<!-- RECIPES -->
+
+<section id="recipes" class="view">
+
+<h1>🍴 Recipes</h1>
+
+<div class="sub">Save TikToks, screenshots and recipes in one place.</div>
+
+<div class="card">
+
+<b>Save a recipe</b>
+
+<div class="small">
+
+Paste a TikTok link or save your recipe notes.
+
+</div>
+
+<button class="btn full" onclick="openRecipe()">＋ Add recipe</button>
+
+</div>
+
+<div class="section">SAVED RECIPES</div>
+
+<div id="recipeList" class="card"></div>
+
+</section>
+
+<!-- DIRTBIKE -->
+
+<section id="dirtbike" class="view">
+
+<h1>🏍 Dirtbike</h1>
+
+<div class="sub">Your bike gets its own organization.</div>
+
+<div class="grid">
+
+<div class="card tile" onclick="showItems('bike','Maintenance')">
+
+<div class="icon">🔧</div>
+
+<b>Maintenance</b>
+
+<div class="small">Service & notes</div>
+
+</div>
+
+<div class="card tile" onclick="showItems('bike','Parts')">
+
+<div class="icon">🛠</div>
+
+<b>Parts</b>
+
+<div class="small">Need / ordered</div>
+
+</div>
+
+<div class="card tile" onclick="showItems('bike','Costs')">
+
+<div class="icon">$</div>
+
+<b>Costs</b>
+
+<div class="small">Parts & repairs</div>
+
+</div>
+
+<div class="card tile" onclick="showItems('bike','Riding')">
+
+<div class="icon">🏁</div>
+
+<b>Riding</b>
+
+<div class="small">Trails & trips</div>
+
+</div>
+
+</div>
+
+<div id="bikeItems" class="card"></div>
+
+<button class="btn full" onclick="addBike()">＋ Add bike item</button>
+
+</section>
+
+<!-- FOLDERS -->
+
+<section id="folders" class="view">
+
+<h1>Folders</h1>
+
+<div class="sub">Create your own spaces.</div>
+
+<div id="folderList"></div>
+
+<button class="btn full" onclick="addFolder()">
+
+＋ Create custom folder
+
+</button>
+
+</section>
+
+<!-- AI -->
+
+<section id="ai" class="view">
+
+<h1>AI Chat</h1>
+
+<div class="sub">Ask your organizer anything.</div>
+
+<div id="chat" class="card">
+
+<div class="small">Try:</div>
+
+<span class="pill">Plan my weekend</span>
+
+<span class="pill">What should I cook?</span>
+
+<span class="pill">Can I afford this?</span>
+
+<span class="pill">Organize this screenshot</span>
+
+</div>
+
+<div class="row">
+
+<input id="chatInput" placeholder="Ask anything…">
+
+<button class="btn" onclick="chat()">Send</button>
+
+</div>
+
+</section>
+
+</div>
+
+<!-- FLOATING BUTTON -->
+
+<button class="fab" onclick="openCapture()">＋</button>
+
+<!-- NAVIGATION -->
+
+<div class="nav">
+
+<div class="navin">
+
+<button onclick="show('home')" id="n-home" class="active">
+
+<b>⌂</b>Home
+
+</button>
+
+<button onclick="show('plan')" id="n-plan">
+
+<b>□</b>Plan
+
+</button>
+
+<button onclick="show('money')" id="n-money">
+
+<b>$</b>Money
+
+</button>
+
+<button onclick="show('us')" id="n-us">
+
+<b>♡</b>Us
+
+</button>
+
+<button onclick="show('ai')" id="n-ai">
+
+<b>✦</b>AI
+
+</button>
+
+</div>
+
+</div>
+
+<!-- MODAL -->
+
+<div id="modal" class="modal">
+
+<div class="sheet">
+
+<button class="close" onclick="closeModal()">×</button>
+
+<h2 id="modalTitle">Quick Capture</h2>
+
+<div id="modalBody"></div>
+
+<div class="row" style="margin-top:14px">
+
+<button class="btn dark grow" onclick="closeModal()">
+
+Cancel
+
+</button>
+
+<button class="btn grow" onclick="saveModal()">
+
+Save
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const KEY = "our_app_data_v2";
+
+let data;
+
+try{
+
+  data = JSON.parse(localStorage.getItem(KEY)) || {
+
+    plans:[],
+
+    bills:[],
+
+    pays:[],
+
+    recipes:[],
+
+    us:[],
+
+    bike:[],
+
+    folders:[],
+
+    goal:0
+
+  };
+
+}catch(e){
+
+  data={
+
+    plans:[],
+
+    bills:[],
+
+    pays:[],
+
+    recipes:[],
+
+    us:[],
+
+    bike:[],
+
+    folders:[],
+
+    goal:0
+
+  };
+
+}
+
+let modalAction = null;
+
+let currentCategory = "Gifts";
+
+function save(){
+
+  localStorage.setItem(KEY,JSON.stringify(data));
+
+  render();
+
+}
+
+function money(n){
+
+  return "$"+Number(n||0).toLocaleString(undefined,{
+
+    minimumFractionDigits:2,
+
+    maximumFractionDigits:2
+
+  });
+
+}
+
+function escapeHtml(value){
+
+  return String(value ?? "")
+
+    .replace(/&/g,"&amp;")
+
+    .replace(/</g,"&lt;")
+
+    .replace(/>/g,"&gt;")
+
+    .replace(/"/g,"&quot;")
+
+    .replace(/'/g,"&#039;");
+
+}
+
+function show(id){
+
+  document.querySelectorAll(".view").forEach(v=>{
+
+    v.classList.remove("active");
+
+  });
+
+  const page=document.getElementById(id);
+
+  if(page) page.classList.add("active");
+
+  document.querySelectorAll(".nav button").forEach(b=>{
+
+    b.classList.remove("active");
+
+  });
+
+  const nav=document.getElementById("n-"+id);
+
+  if(nav) nav.classList.add("active");
+
+  render();
+
+}
+
+function openModal(title,html,action){
+
+  document.getElementById("modalTitle").textContent=title;
+
+  document.getElementById("modalBody").innerHTML=html;
+
+  modalAction=action;
+
+  document.getElementById("modal").classList.add("open");
+
+}
+
+function closeModal(){
+
+  document.getElementById("modal").classList.remove("open");
+
+  modalAction=null;
+
+}
+
+function saveModal(){
+
+  if(typeof modalAction==="function"){
+
+    modalAction();
+
+  }
+
+}
+
+/* QUICK CAPTURE */
+
+function openCapture(){
+
+  openModal(
+
+    "Quick Capture",
+
+    `
+
+    <textarea id="captureText"
+
+      rows="5"
+
+      placeholder="Paste a link, type an idea, or write a note..."></textarea>
+
+    <input id="captureFile"
+
+      type="file"
+
+      accept="image/*,video/*">
+
+    <div class="card">
+
+      <b>AI organization</b>
+
+      <div class="small">
+
+        Save anything quickly. We can add real AI organization later.
+
+      </div>
+
+    </div>
+
+    `,
+
+    ()=>{
+
+      const text=document.getElementById("captureText").value.trim();
+
+      const file=document.getElementById("captureFile").files.length;
+
+      if(!text && !file){
+
+        alert("Add a note, link, screenshot or video first.");
+
+        return;
+
+      }
+
+      data.us.push({
+
+        cat:"Inbox",
+
+        text:text || "Uploaded screenshot/video",
+
+        date:new Date().toLocaleDateString()
+
+      });
+
+      closeModal();
+
+      save();
+
+    }
+
+  );
+
+}
+
+/* PLAN */
+
+function addPlan(){
+
+  openModal(
+
+    "Add to Week",
+
+    `
+
+    <input id="planText" placeholder="What do you need to do?">
+
+    <input id="planDate" type="date">
+
+    <input id="planTime" type="time">
+
+    `,
+
+    ()=>{
+
+      const text=document.getElementById("planText").value.trim();
+
+      if(!text){
+
+        alert("Enter something to plan.");
+
+        return;
+
+      }
+
+      data.plans.push({
+
+        text:text,
+
+        date:document.getElementById("planDate").value,
+
+        time:document.getElementById("planTime").value
+
+      });
+
+      closeModal();
+
+      save();
+
+    }
+
+  );
+
+}
+
+/* MONEY */
+
+function addBill(){
+
+  openModal(
+
+    "Add Bill",
+
+    `
+
+    <input id="billName" placeholder="Bill name">
+
+    <input id="billAmount" type="number" placeholder="Amount">
+
+    <input id="billDate" type="date">
+
+    <select id="billRecurring">
+
+      <option>Recurring monthly</option>
+
+      <option>One time</option>
+
+    </select>
+
+    `,
+
+    ()=>{
+
+      const name=document.getElementById("billName").value.trim();
+
+      if(!name){
+
+        alert("Enter the bill name.");
+
+        return;
+
+      }
+
+      data.bills.push({
+
+        name:name,
+
+        amount:Number(document.getElementById("billAmount").value||0),
+
+        date:document.getElementById("billDate").value,
+
+        recurring:document.getElementById("billRecurring").value
+
+      });
+
+      closeModal();
+
+      save();
+
+    }
+
+  );
+
+}
+
+function addPay(){
+
+  openModal(
+
+    "Add Paycheque",
+
+    `
+
+    <input id="payAmount" type="number" placeholder="Pay amount">
+
+    <input id="payDate" type="date">
+
+    `,
+
+    ()=>{
+
+      data.pays.push({
+
+        amount:Number(document.getElementById("payAmount").value||0),
+
+        date:document.getElementById("payDate").value
+
+      });
+
+      closeModal();
+
+      save();
+
+    }
+
+  );
+
+}
+
+function setGoal(){
+
+  data.goal=Number(
+
+    document.getElementById("goalInput").value||0
+
+  );
+
+  save();
+
+}
+
+/* US */
+
+function addUs(){
+
+  openModal(
+
+    "Add to Her",
+
+    `
+
+    <select id="usCategory">
+
+      <option>Gifts</option>
+
+      <option>Likes</option>
+
+      <option>Dates</option>
+
+      <option>Places</option>
+
+      <option>Notes</option>
+
+    </select>
+
+    <input id="usText"
+
+      placeholder="What do you want to remember?">
+
+    `,
+
+    ()=>{
+
+      const text=document.getElementById("usText").value.trim();
+
+      if(!text){
+
+        alert("Enter something to save.");
+
+        return;
+
+      }
+
+      data.us.push({
+
+        cat:document.getElementById("usCategory").value,
+
+        text:text,
+
+        date:new Date().toLocaleDateString()
+
+      });
+
+      closeModal();
+
+      save();
+
+    }
+
+  );
+
+}
+
+function showItems(type,category){
+
+  currentCategory=category;
+
+  const list=
+
+    type==="us"
+
+    ? data.us.filter(x=>x.cat===category)
+
+    : data.bike.filter(x=>x.cat===category);
+
+  const element=
+
+    document.getElementById(
+
+      type==="us" ? "usItems" : "bikeItems"
+
+    );
+
+  let html="<b>"+escapeHtml(category)+"</b>";
+
+  if(!list.length){
+
+    html+=`
+
+      <div class="empty">
+
+        Nothing saved here yet.
+
+      </div>
+
+    `;
+
+  }else{
+
+    list.forEach((item,index)=>{
+
+      const originalIndex=
+
+        type==="us"
+
+        ? data.us.indexOf(item)
+
+        : data.bike.indexOf(item);
+
+      html+=`
+
+        <div class="item">
+
+          ${escapeHtml(item.text)}
+
+          <button
+
+            class="pill"
+
+            onclick="deleteItem('${type}',${originalIndex})">
+
+            Delete
+
+          </button>
+
+        </div>
+
+      `;
+
+    });
+
+  }
+
+  element.innerHTML=html;
+
+}
+
+function deleteItem(type,index){
+
+  if(type==="us"){
+
+    data.us.splice(index,1);
+
+  }else{
+
+    data.bike.splice(index,1);
+
+  }
+
+  save();
+
+  showItems(type,currentCategory);
+
+}
+
+/* RECIPES */
+
+function openRecipe(){
+
+  openModal(
+
+    "Save a Recipe",
+
+    `
+
+    <input id="recipeName" placeholder="Recipe name">
+
+    <input id="recipeLink"
+
+      placeholder="Paste TikTok or recipe link">
+
+    <textarea id="recipeNotes"
+
+      rows="5"
+
+      placeholder="Ingredients, instructions or notes..."></textarea>
+
+    <input id="recipeFile"
+
+      type="file"
+
+      accept="image/*,video/*">
+
+    `,
+
+    ()=>{
+
+      const name=
+
+        document.getElementById("recipeName").value.trim()
+
+        || "Untitled recipe";
+
+      data.recipes.push({
+
+        name:name,
+
+        link:document.getElementById("recipeLink").value.trim(),
+
+        notes:document.getElementById("recipeNotes").value.trim(),
+
+        date:new Date().toLocaleDateString()
+
+      });
+
+      closeModal();
+
+      save();
+
+      show("recipes");
+
+    }
+
+  );
+
+}
+
+/* DIRTBIKE */
+
+function addBike(){
+
+  openModal(
+
+    "Add Bike Item",
+
+    `
+
+    <select id="bikeCategory">
+
+      <option>Maintenance</option>
+
+      <option>Parts</option>
+
+      <option>Costs</option>
+
+      <option>Riding</option>
+
+      <option>Notes</option>
+
+    </select>
+
+    <input id="bikeText"
+
+      placeholder="What do you want to save?">
+
+    `,
+
+    ()=>{
+
+      const text=document.getElementById("bikeText").value.trim();
+
+      if(!text){
+
+        alert("Enter something to save.");
+
+        return;
+
+      }
+
+      data.bike.push({
+
+        cat:document.getElementById("bikeCategory").value,
+
+        text:text,
+
+        date:new Date().toLocaleDateString()
+
+      });
+
+      closeModal();
+
+      save();
+
+    }
+
+  );
+
+}
+
+/* FOLDERS */
+
+function addFolder(){
+
+  openModal(
+
+    "Create Custom Folder",
+
+    `
+
+    <input id="folderName"
+
+      placeholder="Folder name">
+
+    <input id="folderColumns"
+
+      placeholder="Columns separated by commas">
+
+    `,
+
+    ()=>{
+
+      const name=
+
+        document.getElementById("folderName").value.trim()
+
+        || "New Folder";
+
+      const columns=
+
+        document.getElementById("folderColumns").value
+
+        .split(",")
+
+        .map(x=>x.trim())
+
+        .filter(Boolean);
+
+      data.folders.push({
+
+        name:name,
+
+        columns:columns
+
+      });
+
+      closeModal();
+
+      save();
+
+    }
+
+  );
+
+}
+
+/* AI */
+
+function chat(){
+
+  const input=document.getElementById("chatInput");
+
+  const question=input.value.trim();
+
+  if(!question)return;
+
+  const chatBox=document.getElementById("chat");
+
+  chatBox.innerHTML+=`
+
+    <div class="item">
+
+      <b>You</b>
+
+      <div>${escapeHtml(question)}</div>
+
+    </div>
+
+    <div class="item">
+
+      <b>AI</b>
+
+      <div>
+
+        I can help organize your plans, recipes, money,
+
+        girlfriend ideas and other saved information.
+
+      </div>
+
+    </div>
+
+  `;
+
+  input.value="";
+
+}
+
+/* RENDER */
+
+function render(){
+
+  const today=document.getElementById("todayCard");
+
+  if(data.plans.length){
+
+    today.innerHTML=data.plans.slice(0,3).map(x=>`
+
+      <div class="item">
+
+        <b>${escapeHtml(x.text)}</b>
+
+        <div class="small">
+
+          ${x.date||"No date"}
+
+          ${x.time ? " • "+x.time : ""}
+
+        </div>
+
+      </div>
+
+    `).join("");
+
+  }else{
+
+    today.innerHTML=`
+
+      <div class="row">
+
+        <div class="icon">✓</div>
+
+        <div>
+
+          <b>Nothing urgent</b>
+
+          <div class="small">
+
+            Add something in Plan.
+
+          </div>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
+  document.getElementById("planList").innerHTML=
+
+    data.plans.length
+
+    ? data.plans.map((x,i)=>`
+
+      <div class="item">
+
+        <b>${escapeHtml(x.text)}</b>
+
+        <div class="small">
+
+          ${x.date||"No date"}
+
+          ${x.time ? " • "+x.time : ""}
+
+          <button
+
+            class="pill"
+
+            onclick="data.plans.splice(${i},1);save()">
+
+            Delete
+
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join("")
+
+    : `<div class="empty">No plans yet.</div>`;
+
+  const payTotal=
+
+    data.pays.reduce((sum,x)=>sum+Number(x.amount||0),0);
+
+  const billTotal=
+
+    data.bills.reduce((sum,x)=>sum+Number(x.amount||0),0);
+
+  const safe=
+
+    payTotal-billTotal-Number(data.goal||0);
+
+  const safeElement=
+
+    document.getElementById("safeSpend");
+
+  safeElement.textContent=money(safe);
+
+  safeElement.className=
+
+    "money "+(safe>=0?"good":"bad");
+
+  document.getElementById("moneyExplain").textContent=
+
+    "Pay entered: "+money(payTotal)+
+
+    " • Bills entered: "+money(billTotal);
+
+  document.getElementById("nextPay").textContent=
+
+    money(data.pays[0]?.amount||0);
+
+  document.getElementById("saveGoal").textContent=
+
+    money(data.goal||0);
+
+  document.getElementById("billList").innerHTML=
+
+    data.bills.length
+
+    ? data.bills.map((x,i)=>`
+
+      <div class="item">
+
+        <b>${escapeHtml(x.name)}</b>
+
+        <div class="small">
+
+          ${money(x.amount)}
+
+          • ${x.date||"No date"}
+
+          <button
+
+            class="pill"
+
+            onclick="data.bills.splice(${i},1);save()">
+
+            Delete
+
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join("")
+
+    : `<div class="empty">No bills yet.</div>`;
+
+  document.getElementById("payList").innerHTML=
+
+    data.pays.length
+
+    ? data.pays.map((x,i)=>`
+
+      <div class="item">
+
+        <b>${money(x.amount)}</b>
+
+        <div class="small">
+
+          ${x.date||"No date"}
+
+          <button
+
+            class="pill"
+
+            onclick="data.pays.splice(${i},1);save()">
+
+            Delete
+
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join("")
+
+    : `<div class="empty">No paycheques yet.</div>`;
+
+  document.getElementById("recipeList").innerHTML=
+
+    data.recipes.length
+
+    ? data.recipes.map((r,i)=>`
+
+      <div class="item">
+
+        <b>🍴 ${escapeHtml(r.name)}</b>
+
+        <div class="small">
+
+          ${r.link ? "Link saved" : "No link"}
+
+          • ${r.date}
+
+          <button
+
+            class="pill"
+
+            onclick="data.recipes.splice(${i},1);save()">
+
+            Delete
+
+          </button>
+
+        </div>
+
+        ${
+
+          r.notes
+
+          ? `<div style="margin-top:6px">
+
+              ${escapeHtml(r.notes)}
+
+             </div>`
+
+          : ""
+
+        }
+
+      </div>
+
+    `).join("")
+
+    : `<div class="empty">No recipes saved yet.</div>`;
+
+  document.getElementById("folderList").innerHTML=
+
+    data.folders.length
+
+    ? data.folders.map((f,i)=>`
+
+      <div class="card">
+
+        <div class="row">
+
+          <div class="icon">□</div>
+
+          <div class="grow">
+
+            <b>${escapeHtml(f.name)}</b>
+
+            <div class="small">
+
+              ${
+
+                f.columns?.length
+
+                ? f.columns.map(escapeHtml).join(" • ")
+
+                : "No columns yet"
+
+              }
+
+            </div>
+
+          </div>
+
+          <button
+
+            class="pill"
+
+            onclick="data.folders.splice(${i},1);save()">
+
+            Delete
+
+          </button>
+
+        </div>
+
+      </div>
+
+    `).join("")
+
+    : `<div class="card empty">No custom folders yet.</div>`;
+
+}
+
+/* START */
+
+render();
+
+</script>
+
+</body>
+
+</html> content="#050506">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>OUR — Life Organizer</title>
