@@ -4,12 +4,13 @@
   function dayLabel(d){return d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase()}
   function renderThreeDay(){
     const card=document.getElementById('todayCard');
-    if(!card || !window.data) return;
+    const appData=typeof data!=='undefined'?data:null;
+    if(!card || !appData) return;
     const start=new Date(); start.setHours(0,0,0,0);
     const days=[0,1,2].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);return d});
     card.innerHTML='<div class="three-day-calendar">'+days.map((d,i)=>{
       const k=key(d);
-      const plans=(window.data.plans||[]).filter(p=>p.date===k);
+      const plans=(appData.plans||[]).filter(p=>p.date===k);
       return '<button class="day-column '+(i===0?'today':'')+'" onclick="show(\\'plan\\')">'
         +'<div class="day-name">'+dayLabel(d)+'</div>'
         +'<div class="day-number">'+d.getDate()+'</div>'
