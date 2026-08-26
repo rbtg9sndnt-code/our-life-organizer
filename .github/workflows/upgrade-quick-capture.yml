@@ -29,8 +29,7 @@ jobs:
           )
 
           def replace_fn(name, replacement, next_name):
-              nonlocal_s = globals()
-              pattern = rf"function {re.escape(name)}\(\)\{{.*?\}}function {re.escape(next_name)}"
+              pattern = rf"function {re.escape(name)}\([^)]*\)\{{.*?\}}function {re.escape(next_name)}"
               global s
               s, n = re.subn(pattern, replacement + f"function {next_name}", s, count=1, flags=re.S)
               if n != 1:
@@ -43,7 +42,6 @@ jobs:
           replace_fn('captureSelected', r'''async function captureSelected(){let f=document.getElementById('captureFile').files[0];if(!f)return;let p=document.getElementById('capturePreview'),ai=document.getElementById('captureAi');if(f.type.startsWith('image/')){let r=new FileReader();r.onload=async()=>{p.innerHTML='<img src="'+r.result+'">';p.style.display='block';await runCaptureAI(r.result,document.getElementById('captureText').value.trim())};r.readAsDataURL(f)}else{p.innerHTML='<div class="card">Video selected. It will be saved to your inbox with your note.</div>';p.style.display='block';ai.style.display='block';ai.innerHTML='<b>AI suggestion</b><div>Video capture → Inbox</div><div class="small" style="margin-top:8px">Video is kept as an attachment; add a note above if you want extra context.</div>'}}''', 'recipeSelected')
 
           generic_ai = r'''async function runCaptureAI(image,text){let ai=document.getElementById('captureAi');ai.style.display='block';ai.innerHTML='<b>AI suggestion</b><div>Understanding your capture…</div>';try{let res=await fetch('/api/capture-ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,text})});let out=await res.json();if(!res.ok)throw new Error(out.error||'AI request failed');window._captureAI=out;ai.innerHTML='<b>AI suggestion: '+escapeHtml(out.category||'Capture')+' → '+escapeHtml(out.suggestedDestination||'Inbox')+'</b><div style="font-size:18px;font-weight:750;margin-bottom:6px">'+escapeHtml(out.title||'Captured item')+'</div><div>'+escapeHtml(out.summary||'Saved as a general capture.')+'</div>'+(out.extractedText?'<div class="small" style="margin-top:8px;white-space:pre-wrap">'+escapeHtml(out.extractedText)+'</div>':'')+'<div class="small" style="margin-top:8px">You can still save it even if AI is unsure.</div>'}catch(e){window._captureAI={title:'Unsorted capture',category:'other',summary:'AI could not interpret this image. Your screenshot and note will still be saved.',suggestedDestination:'Inbox',extractedText:''};ai.innerHTML='<b>AI could not fully understand this image</b><div>Your screenshot and note will still be saved safely to Quick Capture.</div><div class="small" style="margin-top:8px">You can organize it later.</div>'}}function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}'''
-          # Insert generic AI helpers immediately before recipeSelected.
           marker = 'function recipeSelected()'
           if generic_ai + marker not in s:
               s = s.replace(marker, generic_ai + marker, 1)
