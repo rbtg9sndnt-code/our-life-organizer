@@ -1,0 +1,48 @@
+name: Apply home layout
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-home:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rework home screen
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          new_home = '''<section id="home" class="view active"><h1 id="monthYear"></h1><div class="sub">Everything you need, in one place.</div><div class="card" onclick="openCapture()"><div class="row"><div class="icon">✦</div><div class="grow"><b>Quick Capture</b><div class="small">Screenshot, link, idea or note</div></div><span>›</span></div></div><div class="section">TODAY</div><div id="todayCard" class="card three-day"></div><div class="section">PLAN &amp; MONEY</div><div class="card home-group"><div class="home-row" onclick="show('plan')"><div class="icon">□</div><div class="grow"><b>Plan</b><div class="small">Week &amp; reminders</div></div><span>›</span></div><div class="home-divider"></div><div class="home-row" onclick="show('money')"><div class="icon">$</div><div class="grow"><b>Money</b><div class="small">Budget &amp; bills</div></div><span>›</span></div></div><div class="section">LIFE</div><div class="card home-group"><div class="home-row" onclick="show('notes')"><div class="icon">✎</div><div class="grow"><b>Notes &amp; Ideas</b><div class="small">Things to remember, ideas &amp; lists</div></div><span>›</span></div><div class="home-divider"></div><div class="home-row" onclick="show('recipes')"><div class="icon">🍴</div><div class="grow"><b>Recipes</b><div class="small">Saved recipes &amp; groceries</div></div><span>›</span></div></div><div class="section">FOLDERS</div><div class="card home-group"><div class="small" style="margin-bottom:6px">Your custom spaces.</div><div id="homeFolders"></div><button class="btn full" onclick="addFolder()">＋ Add folder</button></div><div class="card" onclick="show('ai')"><div class="row"><div class="icon">✦</div><div class="grow"><b>Ask AI anything</b><div class="small">Plan, organize, budget or find things.</div></div><button class="btn">Chat</button></div></div></section>'''
+          s2 = re.sub(r'<section id="home" class="view active">.*?</section><section id="plan"', new_home + '<section id="plan"', s, count=1, flags=re.S)
+          if s2 == s:
+              raise SystemExit('Home section pattern not found')
+          style = '''.home-group{padding:10px 16px}.home-row{display:flex;align-items:center;gap:12px;padding:10px 0;cursor:pointer}.home-row:active{opacity:.7}.home-divider{height:1px;background:var(--line);margin:2px 0}.home-row .icon{width:43px;height:43px}#homeFolders .folder-home-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line);cursor:pointer}#homeFolders .folder-home-row:first-child{border-top:0}.folder-mini-icon{width:43px;height:43px;border-radius:14px;background:#1b1b1f;border:1px solid #ff202826;display:grid;place-items:center;color:var(--red);font-size:20px;flex:none}'''
+          s2 = s2.replace('</style></head>', style + '</style></head>', 1)
+          if 'id="notes" class="view"' not in s2:
+              notes = '''<section id="notes" class="view"><h1>Notes &amp; Ideas</h1><div class="sub">A simple place for anything you don't want to forget.</div><div class="card"><div class="row"><b class="grow">Your notes</b><button class="btn" onclick="addNote()">＋</button></div><div id="notesList" class="list"></div></div></section>'''
+              s2 = s2.replace('<section id="plan"', notes + '<section id="plan"', 1)
+          if 'function addNote()' not in s2:
+              fn = '''function addNote(){openModal('Add Note','<input id="noteTitle" placeholder="Title"><textarea id="noteText" rows="5" placeholder="Write it down…"></textarea>');window._saveNote=true}'''
+              s2 = s2.replace('function addPlan()', fn + 'function addPlan()', 1)
+          s2 = s2.replace("if(window._savePlan||window._saveBill", "if(window._saveNote||window._savePlan||window._saveBill", 1)
+          if "if(window._saveNote){data.us.push({cat:'Notes'" not in s2:
+              s2 = s2.replace('function finishSpecial(){', "function finishSpecial(){if(window._saveNote){data.us.push({cat:'Notes',text:(document.getElementById('noteTitle').value+' — '+document.getElementById('noteText').value),date:new Date().toLocaleDateString()});window._saveNote=false}", 1)
+          hook = "document.getElementById('folderList').innerHTML="
+          home_render = "document.getElementById('homeFolders').innerHTML=data.folders.length?data.folders.map((x,i)=>'<div class=\"folder-home-row\" onclick=\"show(\\'folders\\')\"><div class=\"folder-mini-icon\">□</div><div class=\"grow\"><b>'+x.name+'</b><div class=\"small\">'+(x.cols.length?x.cols.join(' · '):'Custom space')+'</div></div><span>›</span></div>').join(''):'<div class=\"empty\">No custom folders yet.</div>';"
+          if "document.getElementById('homeFolders').innerHTML=" not in s2:
+              s2 = s2.replace(hook, home_render + hook, 1)
+          p.write_text(s2, encoding='utf-8')
+      - name: Commit home update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Rework home screen for universal organizer"
+          git push
