@@ -13,28 +13,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Wire AI chat into the app
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Wire bill fund commands into the app
         shell: python
         run: |
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text()
 
-          old = """function chat(){let v=document.getElementById('chatInput').value.trim();if(!v)return;document.getElementById('chat').innerHTML+='<div class=\"item\"><b>You</b><div>'+v+'</div></div><div class=\"item\"><b>OUR AI</b><div>I can help organize that once the AI connection is added.</div></div>';document.getElementById('chatInput').value=''}"""
-          new = """async function chat(messageOverride){let input=document.getElementById('chatInput'),v=String(messageOverride||input.value||'').trim();if(!v)return;let chatBox=document.getElementById('chat');chatBox.innerHTML+='<div class=\"item\"><b>You</b><div>'+escapeHtml(v)+'</div></div><div class=\"item\" id=\"aiThinking\"><b>OUR AI</b><div>Thinking…</div></div>';input.value='';let thinking=document.getElementById('aiThinking');try{let res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:v,data})});let out=await res.json();if(!res.ok)throw new Error(out.error||'AI request failed');if(thinking)thinking.outerHTML='<div class=\"item\"><b>OUR AI</b><div style=\"white-space:pre-wrap\">'+escapeHtml(out.reply||'I could not generate a response.')+'</div></div>'}catch(e){if(thinking)thinking.outerHTML='<div class=\"item\"><b>OUR AI</b><div>AI connection error: '+escapeHtml(e.message||'Please try again.')+'</div></div>'}}function useChat(v){document.getElementById('chatInput').value=v;chat(v)}"""
-          if old not in s:
-              raise SystemExit('Current chat function not found; refusing to modify index.html')
-          s = s.replace(old, new, 1)
-          s = s.replace('<span class=\"pill\">Plan my weekend</span>', '<button class=\"pill\" onclick=\"useChat(\'Plan my weekend\')\">Plan my weekend</button>', 1)
-          s = s.replace('<span class=\"pill\">What should I cook?</span>', '<button class=\"pill\" onclick=\"useChat(\'What should I cook?\')\">What should I cook?</button>', 1)
-          s = s.replace('<span class=\"pill\">Can I afford this?</span>', '<button class=\"pill\" onclick=\"useChat(\'Can I afford this?\')\">Can I afford this?</button>', 1)
-          s = s.replace('<span class=\"pill\">Organize this screenshot</span>', '<button class=\"pill\" onclick=\"useChat(\'Organize this screenshot\')\">Organize this screenshot</button>', 1)
-          p.write_text(s)
-      - name: Commit AI chat wiring
+          marker = '/* BILL_FUND_CHAT_COMMANDS_V1 */'
+          if marker not in s:
+              code = r'''
+/* BILL_FUND_CHAT_COMMANDS_V1 */
+(function(){
+  const originalChat = chat;
+  function billCommandAmount(message){
+    const m = String(message || '').match(/\b(?:add|put|set\s+aside)\s*\$?\s*([\d,]+(?:\.\d{1,2})?)\s*\$?\s*(?:to|into|in)\s+(?:my\s+)?(?:bill\s+fund|bill\s+account|bills?\s+fund)\b/i);
+    return m ? Number(String(m[1]).replace(/,/g,'')) : null;
+  }
+  chat = async function(messageOverride){
+    const input = document.getElementById('chatInput');
+    const v = String(messageOverride || input.value || '').trim();
+    if(!v)return;
+    const amount = billCommandAmount(v);
+    if(amount !== null && Number.isFinite(amount) && amount > 0){
+      data.billAccount = Number(data.billAccount || 0) + amount;
+      if(!Array.isArray(data.billTransactions)) data.billTransactions = [];
+      data.billTransactions.push({type:'add',amount,date:new Date().toLocaleDateString(),note:v});
+      const chatBox = document.getElementById('chat');
+      chatBox.innerHTML += '<div class="item"><b>You</b><div>'+escapeHtml(v)+'</div></div>';
+      chatBox.innerHTML += '<div class="item"><b>OUR AI</b><div>Done — I added '+money(amount)+' to your Bill Fund. Your Bill Fund is now '+money(data.billAccount)+'.</div></div>';
+      input.value='';
+      save();
+      show('money');
+      return;
+    }
+    return originalChat(messageOverride);
+  };
+})();
+'''
+              needle = '</script></body></html>'
+              if needle not in s:
+                  raise SystemExit('Could not find end of index.html')
+              s = s.replace(needle, code + needle, 1)
+              p.write_text(s)
+
+      - name: Commit bill fund chat wiring
+        shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m 'Connect organizer AI chat to OpenAI'
-          git push
+          git commit -m 'Enable natural-language bill fund commands'
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            sleep 2
+          done
+          exit 1
