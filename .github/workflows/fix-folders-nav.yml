@@ -15,8 +15,8 @@ jobs:
           from pathlib import Path
           p = Path('index.html')
           b = p.read_bytes()
-          old = b'<button onclick="show(\'us\')" id="n-us"><b>♡</b>Us</button>'
-          new = b'<button onclick="show(\'folders\')" id="n-folders"><b>□</b>Folders</button>'
+          old = '<button onclick="show(\'us\')" id="n-us"><b>♡</b>Us</button>'.encode('utf-8')
+          new = '<button onclick="show(\'folders\')" id="n-folders"><b>□</b>Folders</button>'.encode('utf-8')
           if b.count(old) != 1:
               raise SystemExit(f'Expected exactly one navigation item, found {b.count(old)}')
           p.write_bytes(b.replace(old, new, 1))
