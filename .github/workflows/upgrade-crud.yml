@@ -1,0 +1,79 @@
+name: Add full edit and delete controls
+
+on:
+  workflow_run:
+    workflows: ["Upgrade Quick Capture"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  crud:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Add edit and delete controls
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+
+          css = r'''<style>.crud-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.crud-btn{border:1px solid #ffffff18;background:#222227;color:#fff;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:750}.crud-btn.delete{border-color:#ff202855;color:#ff6268}.crud-btn:active{opacity:.7}</style>'''
+          if 'class="crud-actions"' not in s:
+              s = s.replace('</head>', css + '</head>', 1)
+
+          code = r'''
+function crudEsc(v){return escapeHtml(v==null?'':v)}
+function crudAttr(v){return crudEsc(v).replace(/\n/g,' ')}
+function crudConfirm(msg){return window.confirm(msg)}
+function crudEditCapture(i){let x=data.captures[i];if(!x)return;window._crudEditor={type:'capture',index:i};openModal('Edit Capture','<input id="crudTitle" value="'+crudAttr(x.title||'Unsorted capture')+'" placeholder="Title"><input id="crudCategory" value="'+crudAttr(x.category||'other')+'" placeholder="Category"><input id="crudDestination" value="'+crudAttr(x.suggestedDestination||'Inbox')+'" placeholder="Destination"><textarea id="crudText" rows="5" placeholder="Your note">'+crudEsc(x.text||'')+'</textarea>')}
+function crudEditNote(i){let x=data.us[i];if(!x)return;window._crudEditor={type:'note',index:i};openModal('Edit Note','<input id="crudTitle" value="'+crudAttr(x.title||'')+'" placeholder="Title"><textarea id="crudText" rows="5" placeholder="Write it down…">'+crudEsc(x.text||'')+'</textarea>')}
+function crudEditPlan(i){let x=data.plans[i];if(!x)return;window._crudEditor={type:'plan',index:i};openModal('Edit Plan Item','<input id="crudTitle" value="'+crudAttr(x.name||'')+'" placeholder="What do you need to do?"><input id="crudDate" type="date" value="'+crudAttr(x.date||'')+'"><input id="crudTime" type="time" value="'+crudAttr(x.time||'')+'">')}
+function crudEditPay(i){let x=data.pays[i];if(!x)return;window._crudEditor={type:'pay',index:i};openModal('Edit Paycheque','<input id="crudAmount" type="number" step="0.01" value="'+Number(x.amount||0)+'" placeholder="Amount"><input id="crudDate" type="date" value="'+crudAttr(x.date||'')+'">')}
+function crudEditUs(i){let x=data.us[i];if(!x)return;window._crudEditor={type:'us',index:i};openModal('Edit Us Item','<select id="crudCategory"><option '+(x.cat==='Gifts'?'selected':'')+'>Gifts</option><option '+(x.cat==='Likes'?'selected':'')+'>Likes</option><option '+(x.cat==='Dates'?'selected':'')+'>Dates</option><option '+(x.cat==='Places'?'selected':'')+'>Places</option><option '+(x.cat==='Inbox'?'selected':'')+'>Inbox</option><option '+(x.cat==='Notes'?'selected':'')+'>Notes</option></select><input id="crudTitle" value="'+crudAttr(x.title||'')+'" placeholder="Title"><textarea id="crudText" rows="5" placeholder="What do you want to remember?">'+crudEsc(x.text||'')+'</textarea>')}
+function crudEditBike(i){let x=data.bike[i];if(!x)return;window._crudEditor={type:'bike',index:i};openModal('Edit Bike Item','<select id="crudCategory"><option '+(x.cat==='Maintenance'?'selected':'')+'>Maintenance</option><option '+(x.cat==='Parts'?'selected':'')+'>Parts</option><option '+(x.cat==='Costs'?'selected':'')+'>Costs</option><option '+(x.cat==='Riding'?'selected':'')+'>Riding</option></select><input id="crudTitle" value="'+crudAttr(x.title||'')+'" placeholder="Title"><textarea id="crudText" rows="5" placeholder="What do you want to remember?">'+crudEsc(x.text||'')+'</textarea>')}
+function crudEditFolder(i){let x=data.folders[i];if(!x)return;window._crudEditor={type:'folder',index:i};openModal('Edit Folder','<input id="crudTitle" value="'+crudAttr(x.name||'')+'" placeholder="Folder name"><input id="crudColumns" value="'+crudAttr((x.cols||[]).join(', '))+'" placeholder="Columns, separated by commas">')}
+function crudEditRecipe(i){let x=data.recipes[i];if(!x)return;window._crudEditor={type:'recipe',index:i};openModal('Edit Recipe','<input id="crudTitle" value="'+crudAttr(x.name||'')+'" placeholder="Recipe name"><input id="crudLink" value="'+crudAttr(x.link||'')+'" placeholder="Source link"><textarea id="crudText" rows="7" placeholder="Ingredients / notes">'+crudEsc(x.notes||'')+'</textarea>')}
+function crudDelete(kind,i){let arr=kind==='capture'?data.captures:kind==='note'||kind==='us'?data.us:kind==='plan'?data.plans:kind==='bill'?data.bills:kind==='pay'?data.pays:kind==='bike'?data.bike:kind==='folder'?data.folders:kind==='recipe'?data.recipes:null;if(!arr||!Number.isInteger(i)||i<0||i>=arr.length)return;if(!crudConfirm('Delete this item? This cannot be undone.'))return;arr.splice(i,1);save()}
+function crudAddNote(){window._crudEditor={type:'newnote'};openModal('Add Note','<input id="crudTitle" placeholder="Title"><textarea id="crudText" rows="5" placeholder="Write it down…">')}
+function crudSaveEditor(){let e=window._crudEditor;if(!e)return false;let i=e.index,x;if(e.type==='newnote'){data.us.push({cat:'Notes',title:document.getElementById('crudTitle').value.trim(),text:document.getElementById('crudText').value.trim(),date:new Date().toLocaleDateString()})}else if(e.type==='capture'){x=data.captures[i];if(!x)return false;x.title=document.getElementById('crudTitle').value.trim()||'Unsorted capture';x.category=document.getElementById('crudCategory').value.trim()||'other';x.suggestedDestination=document.getElementById('crudDestination').value.trim()||'Inbox';x.text=document.getElementById('crudText').value.trim()}else if(e.type==='note'){x=data.us[i];if(!x)return false;x.title=document.getElementById('crudTitle').value.trim();x.text=document.getElementById('crudText').value.trim()}else if(e.type==='plan'){x=data.plans[i];if(!x)return false;x.name=document.getElementById('crudTitle').value.trim();x.date=document.getElementById('crudDate').value;x.time=document.getElementById('crudTime').value}else if(e.type==='pay'){x=data.pays[i];if(!x)return false;x.amount=Number(document.getElementById('crudAmount').value||0);x.date=document.getElementById('crudDate').value}else if(e.type==='us'){x=data.us[i];if(!x)return false;x.cat=document.getElementById('crudCategory').value;x.title=document.getElementById('crudTitle').value.trim();x.text=document.getElementById('crudText').value.trim()}else if(e.type==='bike'){x=data.bike[i];if(!x)return false;x.cat=document.getElementById('crudCategory').value;x.title=document.getElementById('crudTitle').value.trim();x.text=document.getElementById('crudText').value.trim()}else if(e.type==='folder'){x=data.folders[i];if(!x)return false;x.name=document.getElementById('crudTitle').value.trim()||'Untitled folder';x.cols=document.getElementById('crudColumns').value.split(',').map(v=>v.trim()).filter(Boolean)}else if(e.type==='recipe'){x=data.recipes[i];if(!x)return false;x.name=document.getElementById('crudTitle').value.trim()||'Untitled recipe';x.link=document.getElementById('crudLink').value.trim();x.notes=document.getElementById('crudText').value.trim()}else{return false}window._crudEditor=null;closeModal();save();return true}
+function crudButton(label,fn,del){return '<button type="button" class="crud-btn '+(del?'delete':'')+'" onclick="event.stopPropagation();'+fn+'">'+label+'</button>'}
+function renderCrud(){
+  let captureHtml=data.captures.length?data.captures.slice().reverse().map((x,rev)=>{let i=data.captures.length-1-rev;return '<div class="item"><div class="row">'+(x.image?'<img class="recipe-thumb" src="'+x.image+'">':'')+'<div class="grow"><b>'+crudEsc(x.title||'Unsorted capture')+'</b><div class="small">'+crudEsc(x.category||'other')+' · '+crudEsc(x.suggestedDestination||'Inbox')+' · '+crudEsc(x.date||'')+'</div>'+(x.summary?'<div style="margin-top:5px">'+crudEsc(x.summary)+'</div>':'')+(x.text?'<div class="small" style="margin-top:5px;white-space:pre-wrap">Your note: '+crudEsc(x.text)+'</div>':'')+'<div class="crud-actions">'+crudButton('Edit','crudEditCapture('+i+')')+crudButton('Delete','crudDelete(\'capture\','+i+')',true)+'</div></div></div></div>'}).join(''):'<div class="empty">Nothing captured yet.</div>';
+  let notes=data.us.map((x,i)=>({x,i})).filter(v=>v.x.cat==='Notes');
+  let notesHtml=notes.length?notes.map(v=>'<div class="item"><b>'+crudEsc(v.x.title||'Note')+'</b><div style="margin-top:5px;white-space:pre-wrap">'+crudEsc(v.x.text||'')+'</div><div class="small">'+crudEsc(v.x.date||'')+'</div><div class="crud-actions">'+crudButton('Edit','crudEditNote('+v.i+')')+crudButton('Delete','crudDelete(\'note\','+v.i+')',true)+'</div></div>').join(''):'<div class="empty">No manual notes yet.</div>';
+  document.getElementById('notesList').innerHTML=captureHtml+notesHtml;
+  document.getElementById('planList').innerHTML=data.plans.length?data.plans.map((x,i)=>'<div class="item"><b>'+crudEsc(x.name||'Untitled')+'</b><div class="small">'+crudEsc(x.date||'')+' '+crudEsc(x.time||'')+'</div><div class="crud-actions">'+crudButton('Edit','crudEditPlan('+i+')')+crudButton('Delete','crudDelete(\'plan\','+i+')',true)+'</div></div>').join(''):'<div class="empty">Your week is clear.</div>';
+  document.getElementById('billList').innerHTML=data.bills.length?data.bills.map((x,i)=>'<div class="item"><b>'+crudEsc(x.name||'Bill')+'</b><span style="float:right">'+money(x.amount)+'</span><div class="small">'+crudEsc(x.freq||'')+(x.date?' · due '+crudEsc(x.date):'')+'</div><div class="crud-actions">'+crudButton('Edit','editBill('+i+')')+crudButton('Delete','crudDelete(\'bill\','+i+')',true)+'</div></div>').join(''):'<div class="empty">No bills added.</div>';
+  document.getElementById('payList').innerHTML=data.pays.length?data.pays.map((x,i)=>'<div class="item"><b>'+money(x.amount)+'</b><span style="float:right">'+crudEsc(x.date||'')+'</span><div class="crud-actions">'+crudButton('Edit','crudEditPay('+i+')')+crudButton('Delete','crudDelete(\'pay\','+i+')',true)+'</div></div>').join(''):'<div class="empty">No paycheques added.</div>';
+  document.getElementById('recipeList').innerHTML=data.recipes.length?data.recipes.map((x,i)=>'<div class="item recipe-item" onclick="openRecipeDetail('+i+')"><div class="row">'+(x.image?'<img class="recipe-thumb" src="'+x.image+'">':'')+'<div class="grow"><b>'+crudEsc(x.name||'Untitled recipe')+'</b>'+(x.link?'<div class="small">'+crudEsc(x.link)+'</div>':'')+(x.notes?'<div class="small" style="white-space:pre-line">'+crudEsc(x.notes)+'</div>':'')+'<div class="small">'+crudEsc(x.source||'Saved')+' · '+crudEsc(x.date||'')+'</div><div class="crud-actions">'+crudButton('Edit','crudEditRecipe('+i+')')+crudButton('Delete','crudDelete(\'recipe\','+i+')',true)+'</div></div><span>›</span></div></div>').join(''):'<div class="empty">No recipes saved yet.</div>';
+  document.getElementById('folderList').innerHTML=data.folders.length?data.folders.map((x,i)=>'<div class="card"><b>'+crudEsc(x.name||'Untitled folder')+'</b><div class="small">'+crudEsc((x.cols||[]).join(' · '))+'</div><div class="crud-actions">'+crudButton('Edit','crudEditFolder('+i+')')+crudButton('Delete','crudDelete(\'folder\','+i+')',true)+'</div></div>').join(''):'<div class="card empty">No custom folders yet.</div>';
+  if(window._crudItemsView){let v=window._crudItemsView,arr=v.type==='bike'?data.bike:data.us,id=v.type==='bike'?'bikeItems':'usItems',a=arr.map((x,i)=>({x,i})).filter(v=>v.x.cat===v.cat);document.getElementById(id).innerHTML='<b>'+crudEsc(v.cat)+'</b>'+(a.length?a.map(z=>'<div class="item">'+(z.x.title?'<b>'+crudEsc(z.x.title)+'</b><br>':'')+crudEsc(z.x.text||'')+'<div class="small">'+crudEsc(z.x.date||'')+'</div><div class="crud-actions">'+crudButton('Edit',v.type==='bike'?'crudEditBike('+z.i+')':'crudEditUs('+z.i+')')+crudButton('Delete','crudDelete(\''+v.type+'\','+z.i+')',true)+'</div></div>').join(''):'<div class="empty">Nothing saved here yet.</div>')}
+}
+
+const _crudOriginalShowItems=showItems;
+showItems=function(type,cat){window._crudItemsView={type:type,cat:cat};_crudOriginalShowItems(type,cat);renderCrud()};
+addNote=crudAddNote;
+const _crudOriginalSaveModal=saveModal;
+saveModal=function(){if(window._crudEditor){if(crudSaveEditor())return}_crudOriginalSaveModal()};
+const _crudOriginalRender=render;
+render=function(){_crudOriginalRender();renderCrud()};
+'''
+          if 'function crudEditCapture' not in s:
+              s = s.replace('</script></body></html>', code + '</script></body></html>', 1)
+          s = s.replace('render();</script></body></html>', 'render();renderCrud();</script></body></html>', 1)
+          p.write_text(s)
+
+      - name: Commit CRUD upgrade
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add edit and delete controls throughout organizer'
+          git push
