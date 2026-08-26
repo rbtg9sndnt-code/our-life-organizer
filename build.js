@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const file = path.join(process.cwd(), 'index.html');
+const root = process.cwd();
+const file = path.join(root, 'index.html');
 let html = fs.readFileSync(file, 'utf8');
 const marker = '/* BILL_FUND_CHAT_COMMANDS_V1 */';
 
@@ -41,4 +42,12 @@ ${marker}
   fs.writeFileSync(file, html);
 }
 
+const out = path.join(root, 'public');
+fs.rmSync(out, {recursive:true, force:true});
+fs.mkdirSync(out, {recursive:true});
+fs.copyFileSync(path.join(root, 'index.html'), path.join(out, 'index.html'));
+for (const name of ['manifest.webmanifest', 'sw.js']) {
+  const src = path.join(root, name);
+  if (fs.existsSync(src)) fs.copyFileSync(src, path.join(out, name));
+}
 console.log('Build patch applied: Bill Fund natural-language commands');
