@@ -37,14 +37,38 @@ ${JSON.stringify(safeData)}`;
         model: 'gpt-5.4-mini',
         instructions: system,
         input: String(message).trim(),
-        max_output_tokens: 900
+        max_output_tokens: 2000
       })
     });
 
     const result = await response.json();
-    if (!response.ok) return res.status(response.status).json({ error: result?.error?.message || 'OpenAI request failed' });
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: result?.error?.message || 'OpenAI request failed'
+      });
+    }
 
-    return res.status(200).json({ reply: String(result.output_text || 'I could not generate a response.') });
+    // Responses API normally provides output_text. Keep a fallback so the
+    // app still works if the provider returns the text only inside output[].
+    let reply = String(result.output_text || '').trim();
+    if (!reply && Array.isArray(result.output)) {
+      const parts = [];
+      for (const item of result.output) {
+        if (!Array.isArray(item?.content)) continue;
+        for (const content of item.content) {
+          if (typeof content?.text === 'string') parts.push(content.text);
+        }
+      }
+      reply = parts.join('\n').trim();
+    }
+
+    if (!reply) {
+      return res.status(502).json({
+        error: 'The AI returned no visible answer. Please try again.'
+      });
+    }
+
+    return res.status(200).json({ reply });
   } catch (err) {
     return res.status(500).json({ error: err?.message || 'AI chat failed' });
   }
