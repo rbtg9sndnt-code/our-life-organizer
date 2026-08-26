@@ -1,0 +1,40 @@
+name: Apply working AI chat
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wire AI chat into the app
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+
+          old = """function chat(){let v=document.getElementById('chatInput').value.trim();if(!v)return;document.getElementById('chat').innerHTML+='<div class=\"item\"><b>You</b><div>'+v+'</div></div><div class=\"item\"><b>OUR AI</b><div>I can help organize that once the AI connection is added.</div></div>';document.getElementById('chatInput').value=''}"""
+          new = """async function chat(messageOverride){let input=document.getElementById('chatInput'),v=String(messageOverride||input.value||'').trim();if(!v)return;let chatBox=document.getElementById('chat');chatBox.innerHTML+='<div class=\"item\"><b>You</b><div>'+escapeHtml(v)+'</div></div><div class=\"item\" id=\"aiThinking\"><b>OUR AI</b><div>Thinking…</div></div>';input.value='';let thinking=document.getElementById('aiThinking');try{let res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:v,data})});let out=await res.json();if(!res.ok)throw new Error(out.error||'AI request failed');if(thinking)thinking.outerHTML='<div class=\"item\"><b>OUR AI</b><div style=\"white-space:pre-wrap\">'+escapeHtml(out.reply||'I could not generate a response.')+'</div></div>'}catch(e){if(thinking)thinking.outerHTML='<div class=\"item\"><b>OUR AI</b><div>AI connection error: '+escapeHtml(e.message||'Please try again.')+'</div></div>'}}function useChat(v){document.getElementById('chatInput').value=v;chat(v)}"""
+          if old not in s:
+              raise SystemExit('Current chat function not found; refusing to modify index.html')
+          s = s.replace(old, new, 1)
+          s = s.replace('<span class=\"pill\">Plan my weekend</span>', '<button class=\"pill\" onclick=\"useChat(\'Plan my weekend\')\">Plan my weekend</button>', 1)
+          s = s.replace('<span class=\"pill\">What should I cook?</span>', '<button class=\"pill\" onclick=\"useChat(\'What should I cook?\')\">What should I cook?</button>', 1)
+          s = s.replace('<span class=\"pill\">Can I afford this?</span>', '<button class=\"pill\" onclick=\"useChat(\'Can I afford this?\')\">Can I afford this?</button>', 1)
+          s = s.replace('<span class=\"pill\">Organize this screenshot</span>', '<button class=\"pill\" onclick=\"useChat(\'Organize this screenshot\')\">Organize this screenshot</button>', 1)
+          p.write_text(s)
+      - name: Commit AI chat wiring
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Connect organizer AI chat to OpenAI'
+          git push
