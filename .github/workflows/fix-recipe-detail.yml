@@ -13,68 +13,57 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Update recipe detail, deletion and photo capture
+      - name: Patch recipe photo capture
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('index.html')
-          s = p.read_text()
+          import re
+          p=Path('index.html')
+          s=p.read_text()
 
-          old_css = '.recipe-detail-img{width:100%;max-height:65vh;object-fit:contain;border-radius:16px;background:#050506;margin:8px 0 14px}'
-          new_css = '.recipe-detail-img{width:100%;height:180px;object-fit:cover;border-radius:18px;background:#050506;margin:8px 0 14px}.recipe-detail-wrap{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:start}.recipe-detail-wrap .recipe-detail-img{margin:0}.recipe-detail-info h2{font-size:24px;line-height:1.08;margin:0 0 10px}.recipe-detail-info .small{margin:5px 0}.recipe-detail-ingredients{margin-top:16px;padding:15px;border:1px solid #ffffff10;background:#151518;border-radius:16px}.recipe-detail-ingredients div{padding:6px 0;border-bottom:1px solid #ffffff10}.recipe-detail-ingredients div:last-child{border-bottom:0}.recipe-source{margin-top:12px}'
-          s = s.replace(old_css, new_css)
+          # The old prototype used a hard-coded recipe for every uploaded image.
+          start=s.find('function testRecipePreview(target){')
+          end=s.find('\nfunction captureSelected',start)
+          if start>=0 and end>=0:
+              fn='''async function testRecipePreview(target,imageData){target.innerHTML='<b>Reading your photo…</b><div class="small" style="margin-top:8px">Checking the uploaded image.</div>';target.style.display='block';window._captureRecipe={name:'Captured recipe',notes:''};if(!imageData||typeof Tesseract==='undefined'){target.innerHTML='<b>Photo captured</b><div class="small" style="margin-top:8px">Add the recipe name or notes before saving.</div>';return}try{let result=await Tesseract.recognize(imageData,'eng');let text=(result.data.text||'').replace(/\\r/g,'').split('\\n').map(v=>v.trim()).filter(Boolean);let lines=text.filter(v=>/\\b(cup|cups|tbsp|tsp|tablespoon|teaspoon|oz|ounce|lb|pound|gram|grams|ml|kg|ingredient|direction|instruction|salt|pepper|flour|sugar|cheese|chicken|beef|pork|garlic|onion)\\b/i.test(v));let title=(text.find(v=>v.length>=5&&v.length<=90&&!/^(ingredients?|directions?|instructions?)$/i.test(v))||'Captured recipe').replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/g,'').trim();let notes=lines.slice(0,20).join('\\n');window._captureRecipe={name:title||'Captured recipe',notes};if(lines.length){target.innerHTML='<b>Photo read → Recipes</b><div>'+((title||'Captured recipe').replace(/</g,'&lt;'))+'</div><ul>'+lines.slice(0,8).map(v=>'<li>'+v.replace(/</g,'&lt;')+'</li>').join('')+'</ul><div class="small" style="margin-top:8px">Review before saving.</div>'}else{target.innerHTML='<b>Photo captured</b><div class="small" style="margin-top:8px">No clear recipe text found. Enter the details manually.</div>'}}catch(err){window._captureRecipe={name:'Captured recipe',notes:''};target.innerHTML='<b>Photo captured</b><div class="small" style="margin-top:8px">I could not read the text from this image. Enter the details manually.</div>'}}'''
+              s=s[:start]+fn+s[end:]
 
-          start = s.find('function deleteRecipe(i,e){')
-          end = s.find('\nfunction openRecipeDetail', start)
-          if start != -1 and end != -1:
-              fn = '''function deleteRecipe(i,e){if(e){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation()}if(!Number.isInteger(i)||i<0||i>=data.recipes.length)return;let name=data.recipes[i]?.name||'this recipe';if(!confirm('Delete '+name+'?'))return;data.recipes.splice(i,1);localStorage.setItem(KEY,JSON.stringify(data));render();show('recipes')}'''
-              s = s[:start] + fn + s[end:]
+          start=s.find('function captureSelected(){')
+          end=s.find('\nfunction recipeSelected',start)
+          if start>=0 and end>=0:
+              fn='''function captureSelected(){let f=document.getElementById('captureFile').files[0];if(!f)return;let p=document.getElementById('capturePreview');if(f.type.startsWith('image/')){let r=new FileReader();r.onload=()=>{p.innerHTML='<img src="'+r.result+'">';p.style.display='block';testRecipePreview(document.getElementById('captureAi'),r.result)};r.readAsDataURL(f)}else{p.innerHTML='<div class="card">Video selected.</div>';p.style.display='block';window._captureRecipe=null}}'''
+              s=s[:start]+fn+s[end:]
 
-          start = s.find('function openRecipeDetail(i){')
-          end = s.find('\nfunction testRecipePreview', start)
-          if start != -1 and end != -1:
-              fn = '''function openRecipeDetail(i){let x=data.recipes[i];if(!x)return;openModal('Recipe','');let ingredients=(x.notes||'').split('\\n').map(v=>v.trim()).filter(Boolean);document.getElementById('mb').innerHTML='<div class="recipe-detail-wrap">'+(x.image?'<img class="recipe-detail-img" src="'+x.image+'">':'<div class="recipe-detail-img"></div>')+'<div class="recipe-detail-info"><h2>'+x.name+'</h2><div class="small">🍴 Recipes</div><div class="small">📅 '+x.date+'</div><div class="small">🏷 '+(x.source||'Recipe Capture')+'</div></div></div>'+(ingredients.length?'<div class="recipe-detail-ingredients"><b>Ingredients</b>'+ingredients.map(v=>'<div>'+v+'</div>').join('')+'</div>':'')+(x.link?'<div class="recipe-source"><div class="small">Source</div><div>'+x.link+'</div></div>':'')+'<button class="btn full" onclick="closeModal()">Done</button><button class="recipe-delete full" style="margin-top:8px" onclick="deleteRecipeFromDetail('+i+')">Delete recipe</button>';document.querySelector('#modal .sheet > .row').style.display='none'}\nfunction deleteRecipeFromDetail(i){if(!Number.isInteger(i)||i<0||i>=data.recipes.length)return;let name=data.recipes[i]?.name||'this recipe';if(!confirm('Delete '+name+'?'))return;data.recipes.splice(i,1);localStorage.setItem(KEY,JSON.stringify(data));closeModal();render();show('recipes')}'''
-              s = s[:start] + fn + s[end:]
+          start=s.find('function recipeSelected(){')
+          end=s.find('\nfunction saveModal',start)
+          if start>=0 and end>=0:
+              fn='''function recipeSelected(){let f=document.getElementById('recipeFile').files[0];if(!f)return;let r=new FileReader();r.onload=async()=>{let p=document.getElementById('recipePreview');p.innerHTML='<img src="'+r.result+'">';p.style.display='block';await testRecipePreview(document.getElementById('recipeAi'),r.result);let rec=window._captureRecipe||{};if(!document.getElementById('recipeName').value&&rec.name)document.getElementById('recipeName').value=rec.name;if(!document.getElementById('recipeNotes').value&&rec.notes)document.getElementById('recipeNotes').value=rec.notes};r.readAsDataURL(f)}'''
+              s=s[:start]+fn+s[end:]
 
-          # Replace the hard-coded demo recipe recognition with OCR-based recognition of the actual uploaded image.
-          start = s.find('function testRecipePreview(target){')
-          end = s.find('\nfunction captureSelected', start)
-          if start != -1 and end != -1:
-              fn = '''async function testRecipePreview(target,imageData){target.innerHTML='<b>Reading your photo…</b><div class="small" style="margin-top:8px">Checking the uploaded image instead of using a demo recipe.</div>';target.style.display='block';window._captureRecipe={name:'Captured recipe',notes:''};if(!imageData||typeof Tesseract==='undefined'){target.innerHTML='<b>Photo captured</b><div class="small" style="margin-top:8px">Add the recipe name or notes below before saving.</div>';return}try{let result=await Tesseract.recognize(imageData,'eng');let text=(result.data.text||'').replace(/\\r/g,'').split('\\n').map(v=>v.trim()).filter(Boolean);let recipeWords=text.filter(v=>/\\b(cup|cups|tbsp|tsp|tablespoon|teaspoon|oz|ounce|lb|pound|gram|grams|ml|kg|ingredients?|directions?|instructions?|salt|pepper|flour|sugar|cheese|chicken|beef|pork|garlic|onion)\\b/i.test(v));let title=(text.find(v=>v.length>=5&&v.length<=80&&!/^(ingredients?|directions?|instructions?)$/i.test(v))||'Captured recipe').replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/g,'').trim();let notes=recipeWords.slice(0,20).join('\\n');window._captureRecipe={name:title||'Captured recipe',notes};if(recipeWords.length>=1){target.innerHTML='<b>Photo read → Recipes</b><div>'+((title||'Captured recipe').replace(/</g,'&lt;'))+'</div><ul>'+recipeWords.slice(0,8).map(v=>'<li>'+v.replace(/</g,'&lt;')+'</li>').join('')+'</ul><div class="small" style="margin-top:8px">Review the name and notes before saving.</div>'}else{target.innerHTML='<b>Photo captured</b><div class="small" style="margin-top:8px">I could not find clear recipe text in this image. You can enter the name and notes manually.</div>'}}catch(err){window._captureRecipe={name:'Captured recipe',notes:''};target.innerHTML='<b>Photo captured</b><div class="small" style="margin-top:8px">I could not read the text from this image. You can enter the recipe details manually.</div>'}}'''
-              s = s[:start] + fn + s[end:]
+          # Replace the Quick Capture image-save block regardless of whitespace/line wrapping.
+          pattern=r"if\(file&&file\.type\.startsWith\('image/'\)\)\{let r=new FileReader\(\);r\.onload=\(\)=>\{data\.recipes\.push\(\{name:'Dill Pickle Ranch Crunch Cheese Ball Bites'.*?r\.readAsDataURL\(file\);return\}"
+          replacement="if(file&&file.type.startsWith('image/')){let r=new FileReader();r.onload=()=>{let rec=window._captureRecipe||{};data.recipes.push({name:(rec.name||'Captured recipe'),link:'',notes:(rec.notes||text),image:r.result,date:new Date().toLocaleDateString(),source:'Quick Capture'});closeModal();save();show('recipes')};r.readAsDataURL(file);return}"
+          s,n=re.subn(pattern,replacement,s,count=1,flags=re.S)
 
-          start = s.find('function captureSelected(){')
-          end = s.find('\nfunction recipeSelected', start)
-          if start != -1 and end != -1:
-              fn = '''function captureSelected(){let f=document.getElementById('captureFile').files[0];if(!f)return;let p=document.getElementById('capturePreview');if(f.type.startsWith('image/')){let r=new FileReader();r.onload=()=>{p.innerHTML='<img src="'+r.result+'">';p.style.display='block';testRecipePreview(document.getElementById('captureAi'),r.result)};r.readAsDataURL(f)}else{p.innerHTML='<div class="card">Video selected.</div>';p.style.display='block';window._captureRecipe=null}}'''
-              s = s[:start] + fn + s[end:]
+          # Remove any remaining hard-coded demo defaults in the recipe form.
+          s=re.sub(r"if\(!document\.getElementById\('recipeName'\)\.value\)document\.getElementById\('recipeName'\)\.value='Dill Pickle Ranch Crunch Cheese Ball Bites';",'',s)
+          s=re.sub(r"if\(!document\.getElementById\('recipeNotes'\)\.value\)document\.getElementById\('recipeNotes'\)\.value='8 oz cream cheese, softened\\n1 cup shredded sharp cheddar cheese\\n½ cup finely chopped dill pickles, well drained'",'',s)
 
-          start = s.find('function recipeSelected(){')
-          end = s.find('\nfunction saveModal', start)
-          if start != -1 and end != -1:
-              fn = '''function recipeSelected(){let f=document.getElementById('recipeFile').files[0];if(!f)return;let r=new FileReader();r.onload=async()=>{let p=document.getElementById('recipePreview');p.innerHTML='<img src="'+r.result+'">';p.style.display='block';await testRecipePreview(document.getElementById('recipeAi'),r.result);let rec=window._captureRecipe||{};if(!document.getElementById('recipeName').value&&rec.name)document.getElementById('recipeName').value=rec.name;if(!document.getElementById('recipeNotes').value&&rec.notes)document.getElementById('recipeNotes').value=rec.notes};r.readAsDataURL(f)}'''
-              s = s[:start] + fn + s[end:]
-
-          # Make Quick Capture save the actual OCR result instead of the old hard-coded recipe.
-          old_push = "data.recipes.push({name:'Dill Pickle Ranch Crunch Cheese Ball Bites',link:'',notes:'8 oz cream cheese, softened\\n1 cup shredded sharp cheddar cheese\\n½ cup finely chopped dill pickles, well drained',image:r.result,date:new Date().toLocaleDateString(),source:'Quick Capture'});"
-          new_push = "let rec=window._captureRecipe||{};data.recipes.push({name:(rec.name||'Captured recipe'),link:'',notes:(rec.notes||text),image:r.result,date:new Date().toLocaleDateString(),source:'Quick Capture'});"
-          s = s.replace(old_push,new_push)
-
-          # Remove the hard-coded recipe defaults from the regular recipe form.
-          s = s.replace("if(!document.getElementById('recipeName').value)document.getElementById('recipeName').value='Dill Pickle Ranch Crunch Cheese Ball Bites';","")
-          s = s.replace("if(!document.getElementById('recipeNotes').value)document.getElementById('recipeNotes').value='8 oz cream cheese, softened\\n1 cup shredded sharp cheddar cheese\\n½ cup finely chopped dill pickles, well drained'","")
-
-          # Load Tesseract in the browser for actual image text recognition.
           if 'tesseract.min.js' not in s:
-              s = s.replace('</body></html>','<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script></body></html>')
+              s=s.replace('</body></html>','<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script></body></html>')
 
+          # Marker lets us verify this exact repair was applied.
+          if '<!-- recipe-photo-fix-v2 -->' not in s:
+              s=s.replace('</head>','<!-- recipe-photo-fix-v2 --></head>')
           p.write_text(s)
+          print('recipe photo patch matches:',n)
           PY
       - name: Commit fix
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Fix recipe photo capture [skip ci]'
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix uploaded recipe photo handling [skip ci]'
           git push
