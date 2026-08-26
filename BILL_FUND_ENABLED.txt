@@ -1,0 +1,1 @@
+Natural-language Bill Fund commands are enabled in the organizer chat.
