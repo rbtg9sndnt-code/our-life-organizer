@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px;color:#fff;background:#050506;min-height:100vh">Loading OUR…</div><script>
+(async()=>{
+  try{
+    let html=await (await fetch('/index.html?source=base')).text();
+    const replacement=`
+function aiPreview(target,state){
+  target.innerHTML='<b>AI is reading your image…</b><div class="small">Looking for the recipe name and ingredients.</div>';
+  target.style.display='block';
+  if(state){state.target=target;state.status='loading'}
+}
+async function analyzeRecipeImage(file,target){
+  const state={target,status:'loading'};aiPreview(target,state);
+  const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const resp=await fetch('/api/recipe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:r.result,mode:'recipe'})});
+      const out=await resp.json();
+      if(!resp.ok)throw new Error(out.error||'AI request failed');
+      state.result=out;state.status='done';
+      const ingredients=Array.isArray(out.ingredients)?out.ingredients:[];
+      target.innerHTML='<b>AI suggestion: Recipe → Recipes</b><div style="font-size:18px;font-weight:750;margin-bottom:6px">'+escapeHtml(out.name)+'</div>'+(ingredients.length?'<ul>'+ingredients.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul>':'')+(out.notes?'<div class="small" style="margin-top:8px">'+escapeHtml(out.notes)+'</div>':'');
+      target.style.display='block';
+      state.target=target;
+      target.dataset.ai=JSON.stringify(out);
+      if(document.getElementById('recipeName')&&!document.getElementById('recipeName').value)document.getElementById('recipeName').value=out.name||'';
+      if(document.getElementById('recipeNotes')&&!document.getElementById('recipeNotes').value)document.getElementById('recipeNotes').value=ingredients.join('\\n');
+    }catch(e){
+      state.status='error';target.innerHTML='<b>AI could not read this image</b><div class="small" style="margin-top:8px">'+escapeHtml(e.message||'Connection error')+'</div><div class="small" style="margin-top:8px">You can still enter the recipe manually.</div>';target.style.display='block';
+    }
+  };r.readAsDataURL(file);
+  return state;
+}
+function escapeHtml(s){return String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
+function captureSelected(){let f=document.getElementById('captureFile').files[0];if(!f)return;let p=document.getElementById('capturePreview');if(f.type.startsWith('image/')){let r=new FileReader();r.onload=()=>{p.innerHTML='<img src="'+r.result+'">';p.style.display='block';analyzeRecipeImage(f,document.getElementById('captureAi'))};r.readAsDataURL(f)}else{p.innerHTML='<div class="card">Video selected.</div>';p.style.display='block'}}
+function recipeSelected(){let f=document.getElementById('recipeFile').files[0];if(!f)return;let r=new FileReader();r.onload=()=>{let p=document.getElementById('recipePreview');p.innerHTML='<img src="'+r.result+'">';p.style.display='block';analyzeRecipeImage(f,document.getElementById('recipeAi'))};r.readAsDataURL(f)}
+function saveModal(){let title=document.getElementById('mt').textContent;if(title==='Quick Capture'){let text=document.getElementById('captureText').value.trim(),file=document.getElementById('captureFile').files[0],ai=document.getElementById('captureAi')?.dataset.ai;if(!text&&!file)return alert('Add a note, link, screenshot or video first.');if(file&&file.type.startsWith('image/')){let r=new FileReader();r.onload=()=>{let a=ai?JSON.parse(ai):null;data.recipes.push({name:a?.name||'Captured recipe',link:'',notes:a?.ingredients?.join('\\n')||'',image:r.result,date:new Date().toLocaleDateString(),source:'AI Recipe Capture'});closeModal();save();show('recipes')};r.readAsDataURL(file);return}data.us.push({cat:'Inbox',text:text||'Uploaded video',date:new Date().toLocaleDateString()});closeModal();save();return}if(title==='Save a Recipe'){let name=document.getElementById('recipeName').value.trim()||'Untitled recipe',link=document.getElementById('recipeLink').value.trim(),notes=document.getElementById('recipeNotes').value.trim(),file=document.getElementById('recipeFile').files[0];if(file&&file.type.startsWith('image/')){let r=new FileReader();r.onload=()=>{data.recipes.push({name,link,notes,image:r.result,date:new Date().toLocaleDateString(),source:'AI Recipe Capture'});closeModal();save();show('recipes')};r.readAsDataURL(file);return}data.recipes.push({name,link,notes,date:new Date().toLocaleDateString(),source:'Recipe Capture'});closeModal();save();show('recipes');return}if(window._saveNote||window._savePlan||window._saveBill||window._savePay||window._saveUs||window._saveBike||window._saveFolder||window._saveBillMoney||window._saveSafeSpend)finishSpecial();closeModal();save()}
+function addNote`;
+    html=html.replace(/function testRecipePreview[\s\S]*?function addNote/,replacement);
+    document.open();document.write(html);document.close();
+  }catch(e){document.body.innerHTML='<pre style="white-space:pre-wrap">OUR could not load: '+String(e)+'</pre>'}
+})();
+</script></body></html>
