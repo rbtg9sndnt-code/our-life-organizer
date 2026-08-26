@@ -36,10 +36,6 @@ jobs:
               fn = '''function openRecipeDetail(i){let x=data.recipes[i];if(!x)return;openModal('Recipe','');let ingredients=(x.notes||'').split('\\n').map(v=>v.trim()).filter(Boolean);document.getElementById('mb').innerHTML='<div class="recipe-detail-wrap">'+(x.image?'<img class="recipe-detail-img" src="'+x.image+'">':'<div class="recipe-detail-img"></div>')+'<div class="recipe-detail-info"><h2>'+x.name+'</h2><div class="small">🍴 Recipes</div><div class="small">📅 '+x.date+'</div><div class="small">🏷 '+(x.source||'Recipe Capture')+'</div></div></div>'+(ingredients.length?'<div class="recipe-detail-ingredients"><b>Ingredients</b>'+ingredients.map(v=>'<div>'+v+'</div>').join('')+'</div>':'')+(x.link?'<div class="recipe-source"><div class="small">Source</div><div>'+x.link+'</div></div>':'')+'<button class="btn full" onclick="closeModal()">Done</button><button class="recipe-delete full" style="margin-top:8px" onclick="deleteRecipeFromDetail('+i+')">Delete recipe</button>';document.querySelector('#modal .sheet > .row').style.display='none'}\nfunction deleteRecipeFromDetail(i){if(!Number.isInteger(i)||i<0||i>=data.recipes.length)return;let name=data.recipes[i]?.name||'this recipe';if(!confirm('Delete '+name+'?'))return;data.recipes.splice(i,1);localStorage.setItem(KEY,JSON.stringify(data));closeModal();render();show('recipes')}'''
               s = s[:start] + fn + s[end:]
 
-          old_render = '<button type="button" class="recipe-delete" onclick="deleteRecipe('+i+',event)">Delete recipe</button>'
-          new_render = '<button type="button" class="recipe-delete" onclick="deleteRecipe('+i+',event);return false">Delete recipe</button>'
-          s = s.replace(old_render, new_render)
-
           p.write_text(s)
           PY
       - name: Commit fix
