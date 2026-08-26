@@ -1,0 +1,42 @@
+name: Apply organizer CRUD
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply CRUD code
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          wf = Path('.github/workflows/upgrade-crud.yml').read_text()
+          m = re.search(r"code = r'''(.*?)'''", wf, re.S)
+          if not m:
+              raise SystemExit('CRUD code block not found')
+          code = m.group(1)
+          p = Path('index.html')
+          s = p.read_text()
+          css = r'''<style>.crud-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.crud-btn{border:1px solid #ffffff18;background:#222227;color:#fff;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:750}.crud-btn.delete{border-color:#ff202855;color:#ff6268}.crud-btn:active{opacity:.7}</style>'''
+          if 'class="crud-actions"' not in s:
+              s = s.replace('</head>', css + '</head>', 1)
+          if 'function crudEditCapture' not in s:
+              s = s.replace('</script></body></html>', code + '</script></body></html>', 1)
+          s = s.replace('render();</script></body></html>', 'render();renderCrud();</script></body></html>', 1)
+          p.write_text(s)
+      - name: Commit CRUD upgrade
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Apply organizer edit and delete controls'
+          git push
