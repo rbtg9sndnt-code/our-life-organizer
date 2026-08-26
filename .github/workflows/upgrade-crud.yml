@@ -66,6 +66,40 @@ render=function(){_crudOriginalRender();renderCrud()};
           if 'function crudEditCapture' not in s:
               s = s.replace('</script></body></html>', code + '</script></body></html>', 1)
           s = s.replace('render();</script></body></html>', 'render();renderCrud();</script></body></html>', 1)
+
+          bill_marker = '/* BILL_FUND_CHAT_COMMANDS_V1 */'
+          if bill_marker not in s:
+              bill_code = r'''
+/* BILL_FUND_CHAT_COMMANDS_V1 */
+(function(){
+  const originalChat = chat;
+  function billCommandAmount(message){
+    const m = String(message || '').match(/\b(?:add|put|set\s+aside)\s*\$?\s*([\d,]+(?:\.\d{1,2})?)\s*\$?\s*(?:to|into|in)\s+(?:my\s+)?(?:bill\s+fund|bill\s+account|bills?\s+fund)\b/i);
+    return m ? Number(String(m[1]).replace(/,/g,'')) : null;
+  }
+  chat = async function(messageOverride){
+    const input = document.getElementById('chatInput');
+    const v = String(messageOverride || input.value || '').trim();
+    if(!v)return;
+    const amount = billCommandAmount(v);
+    if(amount !== null && Number.isFinite(amount) && amount > 0){
+      data.billAccount = Number(data.billAccount || 0) + amount;
+      if(!Array.isArray(data.billTransactions)) data.billTransactions = [];
+      data.billTransactions.push({type:'add',amount,date:new Date().toLocaleDateString(),note:v});
+      const chatBox = document.getElementById('chat');
+      chatBox.innerHTML += '<div class="item"><b>You</b><div>'+escapeHtml(v)+'</div></div>';
+      chatBox.innerHTML += '<div class="item"><b>OUR AI</b><div>Done — I added '+money(amount)+' to your Bill Fund. Your Bill Fund is now '+money(data.billAccount)+'.</div></div>';
+      input.value='';
+      save();
+      show('money');
+      return;
+    }
+    return originalChat(messageOverride);
+  };
+})();
+'''
+              s = s.replace('</script></body></html>', bill_code + '</script></body></html>', 1)
+
           p.write_text(s)
 
       - name: Commit CRUD upgrade
