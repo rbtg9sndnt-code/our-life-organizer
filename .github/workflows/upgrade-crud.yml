@@ -1,16 +1,15 @@
 name: Add full edit and delete controls
 
 on:
-  workflow_run:
-    workflows: ["Upgrade Quick Capture"]
-    types: [completed]
+  push:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   crud:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
