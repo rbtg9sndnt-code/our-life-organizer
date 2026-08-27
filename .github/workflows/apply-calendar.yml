@@ -16,79 +16,177 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Apply calendar to clean organizer index
+
+      - name: Repair organizer and apply calendar
         shell: python
         run: |
           from pathlib import Path
+          import re
           import subprocess
-          clean = subprocess.check_output(['git','show','be24ddababaa1e64d6f4d11ef8af2e32ed733489:index.html'], text=True)
+
           p = Path('index.html')
-          s = clean
-          marker = '/* FULL_YEAR_CALENDAR_V5 */'
-          code = r'''
-/* FULL_YEAR_CALENDAR_V5 */
+          s = subprocess.check_output(
+              ['git', 'show', 'be24ddababaa1e64d6f4d11ef8af2e32ed733489:index.html'],
+              text=True
+          )
+
+          # Remove any previously injected calendar blocks before applying one clean copy.
+          s = re.sub(r'/\* FULL_YEAR_CALENDAR_V\d+ \*/.*?(?=</script>)', '', s, flags=re.S)
+
+          # Repair the malformed CRUD newline regex that was making the whole page's JS fail.
+          s = s.replace(
+              "function crudAttr(v){return crudEsc(v).replace(/\\\n/g,' ')}",
+              "function crudAttr(v){return crudEsc(v).replace(/[\\r\\n]/g,' ')}"
+          )
+
+          code = r'''/* FULL_YEAR_CALENDAR_V6 */
 (function(){
-  const css=document.createElement('style');
-  css.textContent=`.calendar-launch{cursor:pointer}.calendar-launch:active{opacity:.75}.calendar-icon{width:43px;height:43px;border-radius:14px;background:#1b1b1f;border:1px solid #ff202826;display:grid;place-items:center;color:#ff2028;font-size:20px;flex:none}.calendar-year-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.calendar-month{background:#151518;border:1px solid #ffffff10;border-radius:16px;padding:10px}.calendar-month h3{font-size:14px;margin:0 0 8px;text-align:center}.calendar-week,.calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.calendar-week span{font-size:8px;color:#777;text-align:center;font-weight:800}.calendar-days{margin-top:3px}.calendar-day{min-height:25px;border:0;background:transparent;color:#ddd;border-radius:6px;font-size:10px;padding:0;position:relative}.calendar-day.has-reminder{background:#222227;color:#fff;font-weight:800}.calendar-day.today{outline:1px solid #ff2028;background:#1d1113;color:#ff6268}.calendar-day.has-reminder:after{content:'';width:4px;height:4px;border-radius:50%;background:#ff2028;position:absolute;right:2px;bottom:2px}.calendar-reminder{padding:11px 0;border-bottom:1px solid #ffffff10}.calendar-reminder:last-child{border-bottom:0}.calendar-muted{color:#92929b;font-size:12px}.calendar-actions{display:flex;gap:8px;margin-top:10px}.calendar-actions .btn{flex:1}@media(max-width:390px){.calendar-year-grid{gap:7px}.calendar-month{padding:8px}.calendar-day{min-height:23px;font-size:9px}}`;
-  document.head.appendChild(css);
   const pad=n=>String(n).padStart(2,'0');
   const key=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-  const fromKey=k=>{const a=k.split('-').map(Number);return new Date(a[0],a[1]-1,a[2])};
+  const esc=v=>escapeHtml(v??'');
   const plans=()=>Array.isArray(data.plans)?data.plans:[];
   const dayPlans=k=>plans().filter(x=>x.date===k);
-  const esc=v=>escapeHtml(v??'');
-  function ensureHome(){
-    const t=document.getElementById('todayCard');if(!t||document.getElementById('homeCalendarCard'))return;
-    const label=document.createElement('div');label.className='section';label.textContent='CALENDAR';
-    const card=document.createElement('div');card.id='homeCalendarCard';card.className='card calendar-launch';
+  const fromKey=k=>{const a=k.split('-').map(Number);return new Date(a[0],a[1]-1,a[2])};
+
+  const css=document.createElement('style');
+  css.textContent=`
+    .calendar-launch{cursor:pointer}.calendar-launch:active{opacity:.75}
+    .calendar-icon{width:43px;height:43px;border-radius:14px;background:#1b1b1f;border:1px solid #ff202826;display:grid;place-items:center;color:#ff2028;font-size:20px;flex:none}
+    .calendar-year-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .calendar-month{background:#151518;border:1px solid #ffffff10;border-radius:16px;padding:10px}
+    .calendar-month h3{font-size:14px;margin:0 0 8px;text-align:center}
+    .calendar-week,.calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+    .calendar-week span{font-size:8px;color:#777;text-align:center;font-weight:800}.calendar-days{margin-top:3px}
+    .calendar-day{min-height:28px;border:0;background:transparent;color:#ddd;border-radius:6px;font-size:10px;padding:0;position:relative}
+    .calendar-day.has-reminder{background:#222227;color:#fff;font-weight:800}.calendar-day.today{outline:1px solid #ff2028;background:#1d1113;color:#ff6268}
+    .calendar-day.has-reminder:after{content:'';width:4px;height:4px;border-radius:50%;background:#ff2028;position:absolute;right:2px;bottom:2px}
+    .calendar-reminder{padding:12px 0;border-bottom:1px solid #ffffff10}.calendar-reminder:last-child{border-bottom:0}
+    .calendar-muted{color:#92929b;font-size:12px}.calendar-actions{display:flex;gap:8px;margin-top:10px}.calendar-actions .btn{flex:1}
+    .calendar-editor{display:grid;gap:8px;margin-top:12px}.calendar-editor .btn{width:100%}
+    @media(max-width:390px){.calendar-year-grid{gap:7px}.calendar-month{padding:8px}.calendar-day{min-height:25px;font-size:9px}}
+  `;
+  document.head.appendChild(css);
+
+  function ensureHomeCalendar(){
+    const today=document.getElementById('todayCard');
+    if(!today||document.getElementById('homeCalendarCard'))return;
+    const label=document.createElement('div');
+    label.className='section';
+    label.textContent='CALENDAR';
+    const card=document.createElement('div');
+    card.id='homeCalendarCard';
+    card.className='card calendar-launch';
     card.innerHTML='<div class="row"><div class="calendar-icon">▣</div><div class="grow"><b>Calendar</b><div class="small">Whole year · tap a day to add reminders</div></div><span style="font-size:25px">›</span></div>';
-    card.onclick=openCalendar;t.after(label,card);
+    card.addEventListener('click',openCalendar);
+    today.after(label,card);
   }
-  function renderDays(){
-    const card=document.getElementById('todayCard');if(!card)return;
+
+  function renderHomeDays(){
+    const card=document.getElementById('todayCard');
+    if(!card)return;
     const start=new Date();start.setHours(0,0,0,0);
-    card.innerHTML=[0,1,2].map(i=>{const d=new Date(start);d.setDate(start.getDate()+i);const k=key(d),rs=dayPlans(k),n=i===0?'TODAY':d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase();return '<button class="day-column '+(i===0?'today':'')+'" onclick="openDay(\''+k+'\')"><div class="day-name">'+n+'</div><div class="day-number">'+d.getDate()+'</div>'+(rs.length?'<div class="day-items">'+rs.slice(0,3).map(x=>'<div class="day-item">'+esc(x.name||'Reminder')+'</div>').join('')+(rs.length>3?'<div class="day-more">+'+(rs.length-3)+' more</div>':'')+'</div>':'<div class="day-empty">Nothing planned</div>')+'</button>'}).join('');
+    card.innerHTML=[0,1,2].map(i=>{
+      const d=new Date(start);d.setDate(start.getDate()+i);
+      const k=key(d),rs=dayPlans(k),name=i===0?'TODAY':d.toLocaleDateString(undefined,{weekday:'short'}).toUpperCase();
+      return '<button type="button" class="day" data-calendar-day="'+k+'"><div class="day-name">'+name+'</div><div class="day-date">'+d.getDate()+'</div>'+(rs.length?rs.slice(0,3).map(x=>'<div class="day-task">'+esc(x.name||'Reminder')+'</div>').join(''):'<div class="day-empty">Nothing planned</div>')+'</button>';
+    }).join('');
+    card.querySelectorAll('[data-calendar-day]').forEach(b=>b.addEventListener('click',()=>openDay(b.dataset.calendarDay)));
   }
+
   function monthHtml(y,m){
     const first=new Date(y,m,1),count=new Date(y,m+1,0).getDate(),start=(first.getDay()+6)%7;
     let s='<div class="calendar-month"><h3>'+first.toLocaleDateString(undefined,{month:'long'})+'</h3><div class="calendar-week">'+['M','T','W','T','F','S','S'].map(x=>'<span>'+x+'</span>').join('')+'</div><div class="calendar-days">';
     for(let i=0;i<start;i++)s+='<span></span>';
-    for(let d=1;d<=count;d++){const date=new Date(y,m,d),k=key(date),rs=dayPlans(k);s+='<button class="calendar-day '+(rs.length?'has-reminder ':'')+(k===key(new Date())?'today':'')+'" onclick="openDay(\''+k+'\')">'+d+'</button>';}
+    for(let d=1;d<=count;d++){
+      const date=new Date(y,m,d),k=key(date),rs=dayPlans(k);
+      s+='<button type="button" class="calendar-day '+(rs.length?'has-reminder ':'')+(k===key(new Date())?'today':'')+'" data-calendar-day="'+k+'">'+d+'</button>';
+    }
     return s+'</div></div>';
   }
-  function openCalendar(){
-    let m=document.getElementById('calendarModal');if(!m){m=document.createElement('div');m.id='calendarModal';m.className='modal';document.body.appendChild(m)}
-    const y=new Date().getFullYear();
-    m.innerHTML='<div class="sheet"><button class="close" onclick="closeCalendar()">×</button><h2>Calendar</h2><div class="small">'+y+' · tap any day to add, edit or delete reminders.</div><button class="btn full" onclick="enableReminderNotifications()">🔔 Enable notifications</button><div class="calendar-year-grid">'+Array.from({length:12},(_,i)=>monthHtml(y,i)).join('')+'</div></div>';
-    m.classList.add('open');
+
+  function getCalendarModal(){
+    let m=document.getElementById('calendarModal');
+    if(!m){m=document.createElement('div');m.id='calendarModal';m.className='modal';document.body.appendChild(m)}
+    return m;
   }
-  window.openCalendar=openCalendar;window.closeCalendar=()=>{const m=document.getElementById('calendarModal');if(m)m.classList.remove('open')};
-  window.openDay=function(k){
-    let m=document.getElementById('calendarModal');if(!m){openCalendar();m=document.getElementById('calendarModal')}
-    const rs=dayPlans(k);
-    m.innerHTML='<div class="sheet"><button class="close" onclick="openCalendar()">×</button><h2>'+fromKey(k).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</h2><div class="calendar-actions"><button class="btn" onclick="addCalendarReminder(\''+k+'\')">＋ Add reminder</button><button class="btn dark" onclick="openCalendar()">Year</button></div><div style="margin-top:12px">'+(rs.length?rs.map(r=>{const i=plans().indexOf(r);return '<div class="calendar-reminder"><b>'+esc(r.name||'Reminder')+'</b><div class="calendar-muted">'+esc(r.time||'No time set')+'</div><div class="crud-actions"><button type="button" class="crud-btn" onclick="openCalendar();setTimeout(function(){crudEditPlan('+i+')},0)">Edit</button><button type="button" class="crud-btn delete" onclick="crudDelete(\'plan\','+i+');openDay(\''+k+'\')">Delete</button></div></div>'}).join(''):'<div class="empty">Nothing planned for this day.</div>')+'</div></div>';
+
+  function openCalendar(){
+    const m=getCalendarModal(),y=new Date().getFullYear();
+    m.innerHTML='<div class="sheet"><button class="close" type="button" id="calendarClose">×</button><h2>Calendar</h2><div class="small">'+y+' · tap any day to add, edit or delete reminders.</div><button class="btn full" type="button" id="calendarNotify">🔔 Enable notifications</button><div class="calendar-year-grid">'+Array.from({length:12},(_,i)=>monthHtml(y,i)).join('')+'</div></div>';
     m.classList.add('open');
-  };
-  window.addCalendarReminder=function(k){window._calendarReminder=true;window._calendarDate=k;openModal('Add Reminder','<input id="calName" placeholder="What do you need to remember?"><input id="calDate" type="date" value="'+k+'"><input id="calTime" type="time"><div class="small">The reminder is saved to your calendar. Notifications can be enabled after saving.</div>')};
-  const oldSaveModal=saveModal;
-  saveModal=function(){if(window._calendarReminder){const name=document.getElementById('calName').value.trim(),date=document.getElementById('calDate').value||window._calendarDate,time=document.getElementById('calTime').value||'';window._calendarReminder=false;window._calendarDate=null;if(!name){closeModal();return}data.plans.push({name,date,time,reminder:true});closeModal();save();scheduleReminder(data.plans[data.plans.length-1]);openDay(date);return}oldSaveModal()};
-  function scheduleReminder(r){if(!r||!r.date)return;const when=new Date(r.date+'T'+(r.time||'09:00')),delay=when.getTime()-Date.now();if(delay<=0)return;const fire=()=>{if('Notification' in window&&Notification.permission==='granted')new Notification('OUR reminder',{body:r.name||'You have a reminder.'});else alert('Reminder: '+(r.name||'You have a reminder.'))};const max=2147480000;setTimeout(()=>{if(delay>max)scheduleReminder(r);else fire()},Math.min(delay,max))}
-  window.enableReminderNotifications=async function(){if(!('Notification' in window)){alert('This browser does not support notifications. Reminders will still be saved.');return}const p=await Notification.requestPermission();if(p==='granted'){alert('Notifications enabled. Scheduled local reminders require the app to remain open in this web version.');plans().forEach(scheduleReminder)}else alert('Notifications were not enabled. Your reminders are still saved.')};
-  const oldRenderThreeDays=window.renderThreeDays;window.renderThreeDays=function(){renderDays();const m=document.getElementById('monthYear');if(m)m.textContent=new Date().toLocaleDateString(undefined,{month:'long',year:'numeric'}).toUpperCase()};
-  const oldRender=window.render;if(typeof oldRender==='function')window.render=function(){oldRender();ensureHome();renderDays()};
-  ensureHome();renderDays();if('Notification' in window&&Notification.permission==='granted')plans().forEach(scheduleReminder);
+    m.querySelector('#calendarClose').onclick=closeCalendar;
+    m.querySelector('#calendarNotify').onclick=enableReminderNotifications;
+    m.querySelectorAll('[data-calendar-day]').forEach(b=>b.onclick=()=>openDay(b.dataset.calendarDay));
+  }
+  function closeCalendar(){const m=document.getElementById('calendarModal');if(m)m.classList.remove('open')}
+
+  function openDay(k){
+    const m=getCalendarModal(),rs=dayPlans(k),d=fromKey(k);
+    m.innerHTML='<div class="sheet"><button class="close" type="button" id="dayClose">×</button><h2>'+d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+'</h2><div class="calendar-actions"><button class="btn" type="button" id="dayAdd">＋ Add reminder</button><button class="btn dark" type="button" id="dayYear">Year</button></div><div style="margin-top:12px">'+(rs.length?rs.map(r=>{const i=plans().indexOf(r);return '<div class="calendar-reminder"><b>'+esc(r.name||'Reminder')+'</b><div class="calendar-muted">'+esc(r.time||'No time set')+'</div><div class="crud-actions"><button type="button" class="crud-btn" data-edit-plan="'+i+'">Edit</button><button type="button" class="crud-btn delete" data-delete-plan="'+i+'">Delete</button></div></div>'}).join(''):'<div class="empty">Nothing planned for this day.</div>')+'</div></div>';
+    m.classList.add('open');
+    m.querySelector('#dayClose').onclick=closeCalendar;
+    m.querySelector('#dayAdd').onclick=()=>addCalendarReminder(k);
+    m.querySelector('#dayYear').onclick=openCalendar;
+    m.querySelectorAll('[data-edit-plan]').forEach(b=>b.onclick=()=>editCalendarReminder(Number(b.dataset.editPlan)));
+    m.querySelectorAll('[data-delete-plan]').forEach(b=>b.onclick=()=>deleteCalendarReminder(Number(b.dataset.deletePlan),k));
+  }
+
+  function addCalendarReminder(k){showReminderEditor(-1,k)}
+  function editCalendarReminder(i){const r=plans()[i];if(!r)return;showReminderEditor(i,r.date||key(new Date()),r)}
+  function showReminderEditor(i,k,r){
+    const m=getCalendarModal();
+    m.innerHTML='<div class="sheet"><button class="close" type="button" id="editorClose">×</button><h2>'+(i<0?'Add reminder':'Edit reminder')+'</h2><div class="calendar-editor"><input id="calName" placeholder="What do you need to remember?" value="'+esc(r?.name||'')+'"><input id="calDate" type="date" value="'+esc(k)+'"><input id="calTime" type="time" value="'+esc(r?.time||'')+'"><button class="btn" type="button" id="calSave">Save reminder</button><button class="btn dark" type="button" id="calCancel">Cancel</button>'+(i>=0?'<button class="crud-btn delete" type="button" id="calDelete">Delete reminder</button>':'')+'</div></div>';
+    m.classList.add('open');
+    m.querySelector('#editorClose').onclick=()=>openDay(k);
+    m.querySelector('#calCancel').onclick=()=>openDay(k);
+    m.querySelector('#calSave').onclick=()=>{
+      const name=m.querySelector('#calName').value.trim(),date=m.querySelector('#calDate').value||k,time=m.querySelector('#calTime').value||'';
+      if(!name){alert('Please enter a reminder.');return}
+      if(i<0)data.plans.push({name,date,time,reminder:true});
+      else {data.plans[i].name=name;data.plans[i].date=date;data.plans[i].time=time;data.plans[i].reminder=true}
+      localStorage.setItem(KEY,JSON.stringify(data));
+      renderHomeDays();
+      openDay(date);
+    };
+    if(i>=0)m.querySelector('#calDelete').onclick=()=>deleteCalendarReminder(i,k);
+  }
+
+  function deleteCalendarReminder(i,k){
+    if(!Number.isInteger(i)||i<0||i>=data.plans.length)return;
+    if(!confirm('Delete this reminder?'))return;
+    data.plans.splice(i,1);
+    localStorage.setItem(KEY,JSON.stringify(data));
+    renderHomeDays();
+    openDay(k);
+  }
+
+  async function enableReminderNotifications(){
+    if(!('Notification' in window)){alert('This browser does not support notifications. Reminders will still be saved.');return}
+    const p=await Notification.requestPermission();
+    if(p==='granted')alert('Notifications are enabled. This web version can notify while the app is open; reliable background notifications need a push-notification service.');
+    else alert('Notifications were not enabled. Your reminders are still saved.');
+  }
+
+  window.openCalendar=openCalendar;
+  window.closeCalendar=closeCalendar;
+  window.openDay=openDay;
+  window.addCalendarReminder=addCalendarReminder;
+  window.enableReminderNotifications=enableReminderNotifications;
+  ensureHomeCalendar();
+  renderHomeDays();
 })();
 '''
-              s = s.replace('</script></body></html>', code + '</script></body></html>', 1)
-              p.write_text(s)
-      - name: Commit calendar upgrade
+          s = s.replace('</script></body></html>', code + '</script></body></html>', 1)
+          p.write_text(s)
+
+      - name: Commit repaired organizer
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m 'Apply calendar UI and reminder support'
+          git commit -m 'Repair organizer and calendar interactions'
           for i in 1 2 3 4 5; do
             git pull --rebase origin main && git push && exit 0
             sleep 2
