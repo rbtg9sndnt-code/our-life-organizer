@@ -16,16 +16,17 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Add calendar to organizer
+      - name: Apply calendar to clean organizer index
         shell: python
         run: |
           from pathlib import Path
+          import subprocess
+          clean = subprocess.check_output(['git','show','be24ddababaa1e64d6f4d11ef8af2e32ed733489:index.html'], text=True)
           p = Path('index.html')
-          s = p.read_text()
-          marker = '/* FULL_YEAR_CALENDAR_V4 */'
-          if marker not in s:
-              code = r'''
-/* FULL_YEAR_CALENDAR_V4 */
+          s = clean
+          marker = '/* FULL_YEAR_CALENDAR_V5 */'
+          code = r'''
+/* FULL_YEAR_CALENDAR_V5 */
 (function(){
   const css=document.createElement('style');
   css.textContent=`.calendar-launch{cursor:pointer}.calendar-launch:active{opacity:.75}.calendar-icon{width:43px;height:43px;border-radius:14px;background:#1b1b1f;border:1px solid #ff202826;display:grid;place-items:center;color:#ff2028;font-size:20px;flex:none}.calendar-year-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.calendar-month{background:#151518;border:1px solid #ffffff10;border-radius:16px;padding:10px}.calendar-month h3{font-size:14px;margin:0 0 8px;text-align:center}.calendar-week,.calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.calendar-week span{font-size:8px;color:#777;text-align:center;font-weight:800}.calendar-days{margin-top:3px}.calendar-day{min-height:25px;border:0;background:transparent;color:#ddd;border-radius:6px;font-size:10px;padding:0;position:relative}.calendar-day.has-reminder{background:#222227;color:#fff;font-weight:800}.calendar-day.today{outline:1px solid #ff2028;background:#1d1113;color:#ff6268}.calendar-day.has-reminder:after{content:'';width:4px;height:4px;border-radius:50%;background:#ff2028;position:absolute;right:2px;bottom:2px}.calendar-reminder{padding:11px 0;border-bottom:1px solid #ffffff10}.calendar-reminder:last-child{border-bottom:0}.calendar-muted{color:#92929b;font-size:12px}.calendar-actions{display:flex;gap:8px;margin-top:10px}.calendar-actions .btn{flex:1}@media(max-width:390px){.calendar-year-grid{gap:7px}.calendar-month{padding:8px}.calendar-day{min-height:23px;font-size:9px}}`;
