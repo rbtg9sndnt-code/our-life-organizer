@@ -6,7 +6,7 @@ const src = path.join(root, 'index.html');
 const out = path.join(root, 'public');
 let html = fs.readFileSync(src, 'utf8');
 
-const marker = '/* ORGANIZER_AI_COMMANDS_V1 */';
+const marker = '/* ORGANIZER_AI_COMMANDS_V2 */';
 if (!html.includes(marker)) {
   const code = String.raw`<script>
 ${marker}
@@ -27,19 +27,35 @@ ${marker}
     if(typeof save==='function')save(); else localStorage.setItem('our_app_data_v1',JSON.stringify(data));
     if(typeof render==='function')render();
   }
+  async function executeCommand(v,status){
+    status.style.display='block';status.innerHTML='<b>OUR AI</b><div>Understanding your request…</div>';
+    try{
+      const r=await fetch('/api/organizer-command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:v,data,today:todayKey()})});
+      const out=await r.json();if(!r.ok)throw new Error(out.error||'Command failed');
+      if(!out.actions?.length){status.innerHTML='<b>Need a little more information</b><div>'+safeEsc(out.reply||'Please clarify what you want me to do.')+'</div>';return;}
+      apply(out.actions);closeModal();if(typeof show==='function')show('plan');setTimeout(()=>alert(out.reply||'Done.'),50);
+    }catch(e){status.innerHTML='<b>Could not complete that</b><div>'+safeEsc(e.message||'Please try again.')+'</div>';}
+  }
   function openCommand(){
     openModal('Tell OUR what to do','<div class="small">Type a normal request and OUR will actually perform it.</div><textarea id="commandText" rows="4" placeholder="Example: Add call wife to my calendar tomorrow at 4:30 pm"></textarea><div id="commandStatus" class="ai-preview" style="display:none"></div>',async function(){
       const el=document.getElementById('commandText'),status=document.getElementById('commandStatus'),v=String(el?.value||'').trim();
       if(!v)return alert('Tell me what you want me to do.');
-      status.style.display='block';status.innerHTML='<b>OUR AI</b><div>Understanding your request…</div>';
-      try{
-        const r=await fetch('/api/organizer-command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:v,data,today:todayKey()})});
-        const out=await r.json();if(!r.ok)throw new Error(out.error||'Command failed');
-        if(!out.actions?.length){status.innerHTML='<b>Need a little more information</b><div>'+safeEsc(out.reply||'Please clarify what you want me to do.')+'</div>';return;}
-        apply(out.actions);closeModal();if(typeof show==='function')show('plan');alert(out.reply||'Done.');
-      }catch(e){status.innerHTML='<b>Could not complete that</b><div>'+safeEsc(e.message||'Please try again.')+'</div>';}
+      await executeCommand(v,status);
     });
   }
+  /* Intercept the existing Quick Capture Save button in capture mode. This runs in capture phase so the old save handler cannot also save the command as a note. */
+  document.addEventListener('click',function(ev){
+    const btn=ev.target&&ev.target.closest?ev.target.closest('#modalSave'):null;
+    if(!btn)return;
+    const title=document.getElementById('modalTitle');
+    if(!title||title.textContent.trim().toLowerCase()!=='quick capture')return;
+    const body=document.getElementById('modalBody');
+    const text=body?.querySelector('textarea')?.value?.trim()||'';
+    if(!text)return;
+    ev.preventDefault();ev.stopImmediatePropagation();
+    const status=document.getElementById('commandStatus')||(()=>{const d=document.createElement('div');d.id='commandStatus';d.className='ai-preview';body?.appendChild(d);return d})();
+    executeCommand(text,status);
+  },true);
   window.openCommand=openCommand;
   window.openCapture=openCommand;
   function wire(){const q=document.getElementById('quickCaptureCard'),f=document.getElementById('fab');if(q)q.onclick=openCommand;if(f)f.onclick=openCommand;}
