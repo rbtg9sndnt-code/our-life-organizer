@@ -1,0 +1,107 @@
+/* QUICK_CAPTURE_LINKS_V2 */
+(function(){
+  const escQC = v => String(v ?? '').replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m] || m));
+  const readQCImage = file => new Promise((resolve,reject)=>{
+    if(!file || !file.type.startsWith('image/')) return resolve('');
+    const r = new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=reject;
+    r.readAsDataURL(file);
+  });
+
+  function applyQCActions(actions){
+    if(!Array.isArray(actions)) return [];
+    const done=[];
+    for(const a of actions){
+      if(!a || !a.type) continue;
+      switch(a.type){
+        case 'add_reminder':
+          if(!Array.isArray(data.plans)) data.plans=[];
+          data.plans.push({name:String(a.name||'Reminder'),date:String(a.date||todayLocal()),time:String(a.time||''),reminder:true});
+          done.push('reminder'); break;
+        case 'add_bill':
+          if(!Array.isArray(data.bills)) data.bills=[];
+          data.bills.push({name:String(a.name||'Bill'),amount:Number(a.amount||0),date:String(a.date||''),freq:String(a.freq||'Monthly')});
+          done.push('bill'); break;
+        case 'add_pay':
+          if(!Array.isArray(data.pays)) data.pays=[];
+          data.pays.push({amount:Number(a.amount||0),date:String(a.date||todayLocal())});
+          done.push('pay'); break;
+        case 'add_note':
+          if(!Array.isArray(data.captures)) data.captures=[];
+          data.captures.unshift({title:String(a.title||'Note'),text:String(a.text||''),category:'note',suggestedDestination:'Notes & Ideas',summary:String(a.text||''),image:String(a.image||''),date:new Date().toLocaleDateString()});
+          done.push('note'); break;
+        case 'add_recipe':
+          if(!Array.isArray(data.recipes)) data.recipes=[];
+          data.recipes.unshift({id:'recipe_'+Date.now()+'_'+Math.random().toString(36).slice(2),name:String(a.name||'Recipe'),ingredients:[],instructions:'',notes:String(a.notes||''),source:String(a.link||''),sourceNote:String(a.notes||''),prepTime:'',totalTime:'',difficulty:'',servings:'',thumbnail:'',image:String(a.image||''),date:new Date().toLocaleDateString(),createdAt:new Date().toISOString()});
+          done.push('recipe'); break;
+        case 'add_bill_money':
+          const amount=Number(a.amount||0)*(String(a.direction||'add').toLowerCase()==='remove'?-1:1);
+          data.billAccount=Number(data.billAccount||0)+amount;
+          if(!Array.isArray(data.billTransactions)) data.billTransactions=[];
+          data.billTransactions.push({type:amount>=0?'add':'remove',amount:Math.abs(amount),date:new Date().toLocaleDateString(),note:'Quick Capture'});
+          done.push('bill fund'); break;
+        case 'save_capture':
+          if(!Array.isArray(data.captures)) data.captures=[];
+          data.captures.unshift({title:String(a.title||'Unsorted capture'),text:String(a.text||''),category:String(a.category||'other'),suggestedDestination:String(a.suggestedDestination||'Inbox'),summary:String(a.summary||''),image:String(a.image||''),date:new Date().toLocaleDateString(),source:'Quick Capture'});
+          done.push('capture'); break;
+      }
+    }
+    return done;
+  }
+
+  async function quickCaptureSaveV2(){
+    const text=String($('captureText')?.value||'').trim();
+    const file=$('captureFile')?.files?.[0];
+    if(!text && !file) return alert('Add a note, link, screenshot, photo or video first.');
+    const saveBtn=$('modalSave');
+    if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='AI is organizing…';}
+    const ai=$('captureAi');
+    if(ai){ai.style.display='block';ai.innerHTML='<b>AI is figuring out where this belongs…</b><div class="small">Links, screenshots, recipes, reminders and notes are all supported.</div>';}
+    try{
+      const image=await readQCImage(file);
+      const res=await fetch('/api/organizer-command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,image,today:typeof todayLocal==='function'?todayLocal():new Date().toISOString().slice(0,10),data})});
+      const out=await res.json();
+      if(!res.ok) throw new Error(out.error||'AI could not organize this capture.');
+      const done=applyQCActions(out.actions||[]);
+      if(!done.length) throw new Error('AI did not return a save action.');
+      if(ai) ai.innerHTML='<b>✓ '+escQC(out.reply||'Saved to the right area.')+'</b><div class="small">Saved as: '+escQC(done.join(', '))+'</div>';
+      save();
+      setTimeout(()=>{
+        closeModal();
+        if(done.includes('recipe')) show('recipes');
+        else if(done.includes('note')) show('notes');
+        else if(done.includes('reminder')) show('plan');
+        else if(done.includes('bill')||done.includes('bill fund')) show('money');
+      },250);
+    }catch(e){
+      if(ai) ai.innerHTML='<b>Could not organize it yet.</b><div class="small">'+escQC(e.message||'Please try again.')+'</div><div class="small" style="margin-top:6px">Your capture was not lost.</div>';
+      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='Save';}
+    }
+  }
+
+  function installQC(){
+    if(typeof window.openCapture!=='function' || window.__qcV2) return;
+    window.__qcV2=true;
+    window.openCapture=function(){
+      openModal('Quick Capture','<div class="small">Throw anything in here. You can type a note, paste a link, attach a screenshot/photo, or do both. AI will place it in the right area. Saving does not depend on perfect recognition.</div><textarea id="captureText" rows="4" placeholder="Paste a TikTok recipe, type a reminder, add a note, or throw anything in…"></textarea><input id="captureFile" type="file" accept="image/*,video/*"><div id="capturePreview" class="capture-preview"></div><div id="captureAi" class="ai-preview" style="display:none"></div>',quickCaptureSaveV2);
+      setTimeout(()=>{
+        const f=$('captureFile');
+        if(f) f.onchange=async()=>{
+          const file=f.files?.[0];
+          const p=$('capturePreview');
+          if(!file||!p)return;
+          p.style.display='block';
+          if(file.type.startsWith('image/')){
+            const image=await readQCImage(file);
+            p.innerHTML='<img src="'+escQC(image)+'">';
+          }else{
+            p.innerHTML='<div class="card">Video attached. AI will organize the capture using the note/link and save it even if the video itself cannot be read.</div>';
+          }
+        };
+      },0);
+    };
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',installQC); else installQC();
+})();
