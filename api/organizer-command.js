@@ -8,7 +8,7 @@ export default async function handler(req,res){
     const safeData={plans:Array.isArray(data.plans)?data.plans:[],bills:Array.isArray(data.bills)?data.bills:[],pays:Array.isArray(data.pays)?data.pays:[],recipes:Array.isArray(data.recipes)?data.recipes:[],us:Array.isArray(data.us)?data.us:[],folders:Array.isArray(data.folders)?data.folders:[],captures:Array.isArray(data.captures)?data.captures:[],goal:Number(data.goal||0),billAccount:Number(data.billAccount||0),safeSpendManual:data.safeSpendManual??null};
 
     let linkContext='';
-    const tiktokMatch=text.match(/https?:\/\/(?:www\.)?(?:vm\.)?tiktok\.com\/[^\s]+/i);
+    const tiktokMatch=text.match(/https?:\/\/(?:www\.)?(?:vm\.|vt\.)?tiktok\.com\/[^\s]+/i);
     if(tiktokMatch){
       const url=tiktokMatch[0].replace(/[),.]+$/,'');
       try{
