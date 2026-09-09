@@ -100,12 +100,14 @@
   function captureRecipe() {
     const body = `
       <div class="small" style="margin-bottom:8px">Add a screenshot. AI will read the recipe, turn it into editable fields, and create a clean recipe photo for the card.</div>
+      <textarea id="recipeLink" rows="2" placeholder="Optional TikTok or source link"></textarea>
       <textarea id="recipeUserNote" rows="3" placeholder="Optional note, e.g. 'make this spicy' or 'use this exact serving size'"></textarea>
       <input id="recipeFile" type="file" accept="image/*">
       <div id="recipeCapturePreview" style="display:none;margin-top:8px"></div>
       <div id="recipeAIStatus" class="ai-preview" style="display:none"></div>`;
     modal('Add Recipe', body, async () => {
       const file = $('recipeFile')?.files?.[0];
+      const link = $('recipeLink')?.value.trim() || '';
       if (!file) return alert('Choose a recipe screenshot first.');
       const saveBtn = $('save');
       if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Reading recipe…'; }
@@ -123,7 +125,7 @@
         const response = await fetch('/api/recipe-ai', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({image, text: $('recipeUserNote')?.value || ''})
+          body: JSON.stringify({image, text: [link, $('recipeUserNote')?.value || ''].filter(Boolean).join('\n')})
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Recipe AI failed.');
@@ -137,7 +139,7 @@
           ingredients: Array.isArray(result.ingredients) ? result.ingredients : [],
           instructions: result.instructions || '',
           notes: result.instructions || result.sourceNote || '',
-          source: result.sourceNote || '',
+          source: link || result.sourceNote || '',
           sourceNote: result.sourceNote || '',
           prepTime: result.prepTime || '',
           totalTime: result.totalTime || '',
