@@ -2,15 +2,13 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const { image, text = '' } = req.body || {};
-    if (!image || typeof image !== 'string' || !image.startsWith('data:image/')) {
+    if (!image || typeof image !== 'string' || !/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(image)) {
       return res.status(400).json({ error: 'A recipe screenshot is required.' });
     }
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'OPENAI_API_KEY is not configured' });
 
-    const extractPrompt = `Read this recipe screenshot carefully. Extract only information that is visible or strongly supported by the screenshot. Return ONLY valid JSON with exactly these keys:
-name (string), ingredients (array of strings), instructions (string), sourceNote (string), prepTime (string), totalTime (string), difficulty (string), servings (string).
-Do not invent missing ingredients or instructions. If a field is not visible, use an empty string. If this is not a recipe, use name "Unrecognized recipe", empty ingredients/instructions, and briefly explain in sourceNote. User note: ${String(text).slice(0, 2000)}`;
+    const extractPrompt = `Read this recipe screenshot carefully. Extract only information that is visible or strongly supported by the screenshot. Return ONLY valid JSON with exactly these keys: name (string), ingredients (array of strings), instructions (string), sourceNote (string), prepTime (string), totalTime (string), difficulty (string), servings (string). Do not invent missing ingredients or instructions. If a field is not visible, use an empty string. If this is not a recipe, use name "Unrecognized recipe", empty ingredients/instructions, and briefly explain in sourceNote. User note/source link: ${String(text).slice(0, 3000)}`;
 
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -19,22 +17,27 @@ Do not invent missing ingredients or instructions. If a field is not visible, us
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-5.6-luna',
+        model: 'gpt-5.4-mini',
+        instructions: 'You are a careful recipe OCR and extraction assistant. Output only the requested JSON object.',
         input: [{
           role: 'user',
           content: [
             { type: 'input_text', text: extractPrompt },
-            { type: 'input_image', image_url: image, detail: 'high' }
+            { type: 'input_image', image_url: image }
           ]
-        ],
+        }],
         max_output_tokens: 2200
       })
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(response.status).json({ error: data?.error?.message || 'OpenAI request failed' });
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data?.error?.message || 'OpenAI request failed'
+      });
+    }
 
-    const raw = data.output_text || '';
+    const raw = String(data.output_text || '').trim();
     let recipe;
     try { recipe = JSON.parse(raw); } catch (_) {
       const match = raw.match(/\{[\s\S]*\}/);
@@ -51,8 +54,7 @@ Do not invent missing ingredients or instructions. If a field is not visible, us
     recipe.difficulty = String(recipe.difficulty || '');
     recipe.servings = String(recipe.servings || '');
 
-    // Generate a clean recipe thumbnail rather than using the original screenshot.
-    // If image generation is unavailable, the recipe still saves normally.
+    // Thumbnail generation is optional. A failure here must never prevent saving the recipe.
     let thumbnail = '';
     try {
       const imagePrompt = `Create a clean, appetizing food photograph for a recipe card. Dish: ${recipe.name}. Ingredients: ${recipe.ingredients.slice(0, 10).join(', ')}. Show only the finished food on a simple attractive plate or serving dish, realistic food photography, natural lighting, no text, no labels, no people, square composition.`;
@@ -78,9 +80,7 @@ Do not invent missing ingredients or instructions. If a field is not visible, us
         if (item?.b64_json) thumbnail = `data:image/jpeg;base64,${item.b64_json}`;
         else if (item?.url) thumbnail = item.url;
       }
-    } catch (_) {
-      thumbnail = '';
-    }
+    } catch (_) {}
 
     return res.status(200).json({ ...recipe, thumbnail });
   } catch (err) {
