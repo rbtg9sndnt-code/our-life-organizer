@@ -21,9 +21,23 @@
   window.toggleBillPaid = function(i){
     const bill = data.bills[i];
     if (!bill) return;
-    if (billPaid(bill)) delete bill.paidMonth;
-    else bill.paidMonth = billMonth();
+    const amount = Number(bill.amount || 0);
+
+    if (billPaid(bill)) {
+      // Undo payment: restore exactly what was removed from the Bill Fund.
+      const restored = Number(bill.paidAmount != null ? bill.paidAmount : amount);
+      data.billAccount = Number(data.billAccount || 0) + restored;
+      delete bill.paidMonth;
+      delete bill.paidAmount;
+    } else {
+      // Paying a bill consumes that amount from the money set aside for bills.
+      bill.paidMonth = billMonth();
+      bill.paidAmount = amount;
+      data.billAccount = Number(data.billAccount || 0) - amount;
+    }
+
     save();
+    if (typeof window.render === 'function') window.render();
   };
 
   window.renderMonthlyBillPaid = function(){
