@@ -59,6 +59,12 @@
       closeModal();
       save();
     });
+    // The recipe-import button is reused by the global modal. Reset it for the editor.
+    const editorSave = $('save');
+    if (editorSave) {
+      editorSave.disabled = false;
+      editorSave.textContent = 'Save';
+    }
     const actions = $('actions');
     if (actions) {
       const del = document.createElement('button');
